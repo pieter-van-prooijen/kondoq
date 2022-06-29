@@ -1,0 +1,16 @@
+pre.single-line {
+    padding-top: 0px;
+    padding-bottom: 0px;
+}
+
+pre code span.current-line {
+    background-color: rgba(100, 255, 100, 0.08)
+}
+
+pre code span.line-number {
+    color: rgb(31, 154, 227)
+}
+
+.symbol-counts-row:hover {
+    background-color: hsl(0, 0%, 96%); /* bulma has-background-light */
+}
