@@ -41,8 +41,9 @@
  ::cancel-add-project
  (fn-traced [{:keys [db]} [_ _]]
             {:http (let [location (get-in db [:current-project :location])]
-                     [(goog.uri.utils/appendPath "/projects"
-                                                 (js/encodeURIComponent location))
+                     [(-> "/projects"
+                          (goog.uri.utils/appendPath (js/encodeURIComponent location))
+                          (goog.uri.utils/appendPath "/adding"))
                       ::fetch-project
                       "DELETE"])}))
 
@@ -62,5 +63,14 @@
             (process-project db (read-string response-body))))
 
 
+(re-frame/reg-event-fx
+ ::delete-project
+ (fn-traced [{:keys [_]} [_ location]]
+            {:http [(-> "projects"
+                        (goog.uri.utils/appendPath (js/encodeURIComponent location)))
+                    [::events/fetch-namespaces-occurrences ""]
+                    "DELETE"]}))
+
 (comment
+  (coll? [:a])
   (js/encodeURIComponent "https://github.com/pieter-van-prooijen/kafka-streams-clojure"))

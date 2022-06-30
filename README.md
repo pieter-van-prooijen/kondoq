@@ -6,6 +6,8 @@ show var usages in public clojure-(script) projects.
 TODO:
 - split in read/write databases (sqlite: file:bla.sqlite?mode=ro ) for later move to single writer?
 - strip leading whitespace when context is collapsed
+- delete projects
+- put newly added projects on top with "added" date
 
 ## Getting Started
 

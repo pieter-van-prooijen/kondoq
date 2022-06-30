@@ -83,11 +83,18 @@
             [:progress.progress.is-primary {:max (:ns-total current-project)
                                             :value (:ns-count current-project)}]]]])]]]))
 
+(defn delete-project [project location e]
+  (.preventDefault e)
+  (when (js/confirm (str "Do you want to delete project " project " ?"))
+    (>evt [::project-events/delete-project location])))
+
 (defn project-row [{:keys [project location ns-count]}]
   ^{:key project} [:tr
                    [:td project]
                    [:td [:a {:href location :target "_blank"} location]]
-                   [:td.has-text-right ns-count]])
+                   [:td.has-text-right ns-count]
+                   [:td
+                    [:button.delete {:on-click #(delete-project project location %)}]]])
 
 (defn projects-panel [is-active]
   [:div {:class (when-not is-active "is-hidden")}
@@ -97,7 +104,8 @@
      [:tr
       [:td "Name"]
       [:td "Location"]
-      [:td "Namespaces"]]]
+      [:td "Namespaces"]
+      [:td ""]]]
     [:tbody
      (map project-row (<sub [::subs/projects]))]]
    [:div

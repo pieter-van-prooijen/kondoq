@@ -28,14 +28,19 @@
                                      (->> (conj expanded x)
                                           (expand-ancestors x parents)))))))
 
+;; Execute a http request.
+;; After success, dispatches an event with the response body or a user defined
+;; event tupple
 (re-frame/reg-fx
  :http
- (fn [[url success-event method]]
+ (fn [[url success-event-or-tupple method]]
    (xhrio/send url
                (fn [ev]
                  (let [^XMLHttpRequest target (.-target ev)
                        response (.getResponseText target)]
-                   (re-frame/dispatch [success-event response])))
+                   (if (coll? success-event-or-tupple)
+                     (re-frame/dispatch success-event-or-tupple)
+                     (re-frame/dispatch [success-event-or-tupple response]))))
                (or method "GET")
                nil
                #js {:accept "application/edn"})))
@@ -81,4 +86,5 @@
   (goog.uri.utils/appendPath "/symbol-counts" "http://foo/bar")
   (expand-ancestors :a {:a :b} #{:a})
   (js/encodeURIComponent "http://bla")
+
   )

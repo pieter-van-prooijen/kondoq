@@ -38,6 +38,7 @@
   (jdbc/execute! db [(str "CREATE TABLE projects ("
                           " project TEXT PRIMARY KEY,"
                           " location TEXT NOT NULL)",)])
+  (jdbc/execute! db ["CREATE INDEX projects_location_index ON projects(location)"])
 
   (jdbc/execute! db [(str "CREATE TABLE namespaces ("
                           " ns TEXT PRIMARY KEY,"
@@ -75,6 +76,12 @@
   (let [sql (sql/format {:delete-from :projects
                          :where [:= :project :?project]}
                         {:params {:project project}})
+        _ (jdbc/execute! db sql)]))
+
+(defn delete-project-by-location [db location]
+  (let [sql (sql/format {:delete-from :projects
+                         :where [:= :location :?location]}
+                        {:params {:location location}})
         _ (jdbc/execute! db sql)]))
 
 ;;

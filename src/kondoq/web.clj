@@ -78,7 +78,14 @@
         resp/response
         (resp/content-type "application/edn"))))
 
-(defn cancel-project-handler [request]
+(defn delete-project-handler [request]
+  (let [project-url (get-in request [:reitit.core/match :path-params :project-url])
+        db (:db request)]
+    (db/delete-project-by-location db project-url)
+    (-> (resp/response (str "/projects/" project-url))
+        (resp/status 202))))
+
+(defn cancel-add-project-handler [request]
   (let [project-url (get-in request [:reitit.core/match :path-params :project-url])
         {project-future :future} (db/fetch-project-status project-url)]
     (if (future? project-future)
@@ -96,13 +103,14 @@
                  ["/projects/:project-url" {:name :projects ; name is required?
                                             :get get-project-status-handler
                                             :put add-project-handler
-                                            :delete cancel-project-handler}]])]
+                                            :delete delete-project-handler}]
+                 ["/projects/:project-url/adding" {:name :projects-adding
+                                                   :delete cancel-add-project-handler}]])]
     (rring/ring-handler router)))
 
 (comment
 
   (def h (create-handler))
-
   (h {:request-method :get :uri "/projects/https%3A%2F%2Fgithub.com%2Fpieter-van-prooijen%2Fkafka-streams-clojure"})
   (h {:request-method :get :uri "/symbol-counts"})
   (h )

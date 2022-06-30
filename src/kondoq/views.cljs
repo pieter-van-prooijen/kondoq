@@ -31,12 +31,20 @@
     (when location
       [:a.tag.is-link {:href location} location])))
 
-(defn code-fragment [code is-collapsed start-context line-no]
+(defn highlight-as-clojure [s]
+  (-> s
+      (js/hljs.highlight #js {:language "clojure"})
+      .-value))
+
+(defn code-fragment [line context is-collapsed start-context line-no]
   (let [class (when is-collapsed "single-line")
-        html (-> code
-                 (js/hljs.highlight #js {:language "clojure"})
-                 .-value
-                 (add-line-markup start-context line-no))]
+        html (if is-collapsed
+               (-> line
+                   (highlight-as-clojure)
+                   (add-line-markup line-no line-no))
+               (-> (or context ";; no context available")
+                   (highlight-as-clojure)
+                   (add-line-markup start-context line-no)))]
     [:pre {:class class}
      [:code {:dangerouslySetInnerHTML {:__html html}}]]))
 
@@ -47,13 +55,12 @@
         is-expanded (expanded key)
         parents (<sub [::subs/parents])
         ancestors-expanded (ancestors-expanded key parents expanded)
-        is-collapsed (or (not is-expanded) (not ancestors-expanded))
-        code (if is-expanded (or context ";; no context available") line)]
+        is-collapsed (or (not is-expanded) (not ancestors-expanded))]
     [:<>
      [:div {:on-click (fn [e]
                         (.preventDefault e)
                         (>evt [::events/toggle-expanded [key parents]]))}
-      [code-fragment code is-collapsed start-context line-no]]
+      [code-fragment line context is-collapsed start-context line-no]]
      (when-not is-collapsed
        (let [href (str location "#L" line-no)]
          [:a.tag.is-link {:href href :target "_blank"} location]))]))

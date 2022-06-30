@@ -16,10 +16,10 @@
 (defn occurrence-key [{:keys [ns line-no]}]
   (str ns "-" line-no))
 
-;; Add line numbers and the highlight the current line
+;; Add (zero based) line numbers and the highlight the current line
 ;; Assumes highlight.js leaves the line structure intact after processing
 (defn add-line-markup [highlighted-html begin current]
-  (->> (string/split highlighted-html #"[\n\r]+")
+  (->> (string/split highlighted-html #"[\n\r]")
        (map  (fn [line-no line]
                (->> (if (= line-no current)
                       (str "<span class=\"current-line\">" line "</span>")
