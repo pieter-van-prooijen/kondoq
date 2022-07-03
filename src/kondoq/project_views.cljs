@@ -4,39 +4,29 @@
             [kondoq.subs :as subs]
             [kondoq.util :refer [<sub >evt] :as util]))
 
-;; Adding a project states:
-;; - showing-projects
-;; - entering-project-url (and a token)
-;; - adding-project (with feedback about the loaded namespaces etc.)
-;; - showing-projects or showing-error
-;;
-
 (defn show-enter-project-url [e]
   (.preventDefault e)
   (>evt [::project-events/show-enter-project-url]))
 
-(defn cancel-enter-project-url [e]
+;; generic cancel
+(defn cancel-projects [e]
   (.preventDefault e)
-  (>evt [::project-events/cancel-enter-project-url]))
+  (>evt [::project-events/cancel-projects]))
 
 (defn add-project [e]
   (.preventDefault e)
   (>evt [::project-events/add-project [(.-value (dom/getElement "project-url"))
                                        (.-value (dom/getElement "token"))]]))
 
-(defn cancel-add-project [e]
-  (.preventDefault e)
-  (>evt [::project-events/cancel-add-project]))
-
 (defn add-project-form [is-active]
   (let [projects-state (<sub [::subs/projects-state])
         current-project (<sub [::subs/current-project])]
     [:div.modal {:class (when is-active "is-active")}
-     [:div.modal-background {:on-click cancel-enter-project-url}]
+     [:div.modal-background {:on-click cancel-projects}]
      [:div.modal-card
       [:header.modal-card-head
        [:p.modal-card-title "Add Github project"]
-       [:button.delete {:on-click cancel-enter-project-url}]]
+       [:button.delete {:on-click cancel-projects}]]
       [:section.modal-card-body
        [:form {:on-submit add-project}
 
@@ -70,18 +60,22 @@
            "Add"]]
          [:div.control
           [:button.button.is-link.is-light
-           {:on-click #(condp = projects-state
-                         :entering-project-url (cancel-enter-project-url %)
-                         :adding-project (cancel-add-project %))}
+           {:on-click cancel-projects}
            "Cancel"]]]]
-       (when (= projects-state :adding-project)
+       (cond
+         (#{ :adding-project :error-adding-project} projects-state)
          [:div.level.mt-4
           [:div.level-left
            [:div.level-item
             [:h6.title.is-6 (:project current-project)]]
            [:div.level-item
-            [:progress.progress.is-primary {:max (:ns-total current-project)
-                                            :value (:ns-count current-project)}]]]])]]]))
+            (if (= projects-state :adding-project)
+              [:progress.progress.is-primary {:max (:ns-total current-project)
+                                              :value (:ns-count current-project)}]
+              [:<>
+               [:div.is-warning "Error: " (:error current-project)]
+               (when-let [current-file (:current-file current-project)]
+                 [:div.is-warning "File: " current-file])])]]])]]]))
 
 (defn delete-project [project location e]
   (.preventDefault e)
@@ -98,7 +92,6 @@
 
 (defn projects-panel [is-active]
   [:div {:class (when-not is-active "is-hidden")}
-   [:h5.title.is-5 "Projects:"]
    [:table.table
     [:thead
      [:tr

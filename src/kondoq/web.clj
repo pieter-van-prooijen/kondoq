@@ -8,7 +8,8 @@
             [ring.middleware.keyword-params :as keyword-params]
             [ring.middleware.params :as params]
             [ring.middleware.resource :as resource]
-            [ring.util.response :as resp]))
+            [ring.util.response :as resp]
+            [clojure.string :as string]))
 
 (def config {:adapter/jetty {:port 3002
                              :db (ig/ref :kondoq/db)
@@ -67,6 +68,9 @@
         token (:token params)
         ;; load in background
         project-future (future (github/upsert-project db etag-db project-url token))]
+    (log/info "adding project with url and token ending in"
+              project-url
+              (if token (re-find #".{4}$" token) "(no-token)"))
     (db/init-project-status project-url project-future)
     (resp/created (str "/projects/" project-url))))
 
@@ -82,8 +86,9 @@
   (let [project-url (get-in request [:reitit.core/match :path-params :project-url])
         db (:db request)]
     (db/delete-project-by-location db project-url)
-    (-> (resp/response (str "/projects/" project-url))
-        (resp/status 202))))
+    (log/info "deleted project " project-url)
+    (-> (resp/response "")
+        (resp/status 204))))
 
 (defn cancel-add-project-handler [request]
   (let [project-url (get-in request [:reitit.core/match :path-params :project-url])

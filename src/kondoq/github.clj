@@ -43,6 +43,15 @@
           (insert-etag-body etag-db url etag body))
         body))))
 
+;; List of source file name patterns which should not be included
+(defn skip-blob? [project-name {:keys [path]}]
+  (or
+   (#{"project.clj"} path)
+   ;; clj-kondo has some duplicate namespaces
+   (and (= project-name "clj-kondo")
+        (or (string/includes? path "inlined")
+            (string/includes? path "corpus")))))
+
 ;; list of file name / blob-url / display-url maps
 (defn fetch-clojure-source-files [etag-db user project-name token]
   (let [tree-url (str "https://api.github.com/repos/"
@@ -51,7 +60,7 @@
         body (fetch-github-resource etag-db tree-url token)]
     (->> (:tree body)
          (filter #(re-find #"(?:clj|cljs|cljc)$" (:path %)))
-         (remove #(#{"project.clj"} (:path %)))
+         (remove (partial skip-blob? project-name))
          (map (fn [{:keys [path url sha]}]
                 {:blob-url url
                  :display-url (str "https://github.com/"
@@ -65,6 +74,7 @@
 ;; language
 (defn insert-git-blob [db project ^String blob encoding sha display-url]
   (when (= encoding "base64")
+    (log/info "inserting file " display-url)
     ;; clj-kondo only handles file paths as input
     (let [extension (re-find #"\.[^.]+$" display-url)
           file (java.io.File/createTempFile (str "kondoq-" sha) extension)]
@@ -87,13 +97,23 @@
         (db/insert-project db project project-url)
         (doseq [[{:keys [blob-url sha display-url]} index]
                 (map vector source-files (range ns-total))]
-          (let [{:keys [content encoding]} (fetch-github-resource etag-db blob-url token)]
+          (let [{:keys [content encoding]}
+                (fetch-github-resource etag-db blob-url token)]
             (insert-git-blob db project content encoding sha display-url)
-            (db/update-project-status project-url project (inc index) ns-total)
+            (db/update-project-status project-url project (inc index) ns-total
+                                      display-url)
             (when (Thread/interrupted)
               (throw (InterruptedException. "upsert-project cancelled")))))))
+    (catch Throwable t
+      ;; normal cancel should not be reported as an error
+      (when-not (instance? InterruptedException t)
+        (log/warn t "upsert-project saw exception:")
+        (db/update-project-with-error project-url (.getMessage t))))
     (finally
-      (db/delete-project-status project-url))))
+      ;; keep the project status around in case an error happened.
+      (let [{error :error} (db/fetch-project-status project-url)]
+        (when-not error
+          (db/delete-project-status project-url))))))
 
 (comment
 

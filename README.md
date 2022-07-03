@@ -4,9 +4,12 @@ A [re-frame](https://github.com/day8/re-frame) / Integrant / jdbc-next applicati
 show var usages in public clojure-(script) projects.
 
 TODO:
+- production: logging, prod build, deploy to external server (build scripts), more tests
+  deploy to pcextreme, lets encrypt?
+- up-to-date sqlite jdbc driver? (support for 3.39, strict tables etc.)
 - split in read/write databases (sqlite: file:bla.sqlite?mode=ro ) for later move to single writer?
-- strip leading whitespace when context is collapsed
-- delete projects
+- strip leading whitespace when context is collapsed?
+- delete projects *in*
 - put newly added projects on top with "added" date
 
 ## Getting Started

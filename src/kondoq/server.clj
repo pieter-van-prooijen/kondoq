@@ -1,5 +1,7 @@
 (ns kondoq.server
-  (:require [integrant.core :as ig]
+  (:gen-class)
+  (:require [clojure.tools.logging :as log]
+            [integrant.core :as ig]
             [kondoq.database :as db]
             [kondoq.etag :as etag]
             [kondoq.web :as web]))
@@ -9,7 +11,14 @@
                    db/config))
 
 (defn -main [& _]
-  (ig/init config))
+  (let [system (ig/init config)
+        db (:kondoq/db system)
+        path (get-in config [:kondoq/db :dbname])]
+    (if (db/schema-exists db)
+      (log/info "schema already present in database " path)
+      (do
+        (log/info "creating schema in database " path)
+        (db/create-schema db)))))
 
 (defn init-db [_]
   (let [system (ig/init config)]

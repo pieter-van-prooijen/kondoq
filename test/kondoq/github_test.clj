@@ -1,16 +1,11 @@
 (ns kondoq.github-test
   (:require [clojure.string :as string]
             [clojure.test :refer [deftest testing is]:as t]
-            [integrant.core :as ig]
             [kondoq.database :as db]
-            [kondoq.github :refer [upsert-project fetch-github-resource]])
+            [kondoq.github :refer [upsert-project fetch-github-resource]]
+            [kondoq.test-utils :refer [*db*] :as tu])
   (:import java.util.Base64))
 
-;;
-;; Checkme: can this run in parallel with the regular repl system ?
-;; seeing "table already exists" errors
-(def ^:dynamic *system*)
-(def ^:dynamic *db*)
 (def ^:dynamic *slow* false)
 
 ;; simulate retrieving a base64 encoded source blob from this project's sources
@@ -45,29 +40,12 @@
                (get blobs url))
              (get blobs url))))
 
-;; One system start for every test
 (defn system-fixture [f]
-  (let [test-db-file (java.io.File/createTempFile "kondoq-test" ".sqlite")
-        config (assoc-in db/config
-                         [:kondoq/db :dbname]
-                         (.getAbsolutePath test-db-file))
-        system (ig/init config)] ; with-redefs is parallel
-    (with-redefs [fetch-github-resource mocked-fetch-github-resource
-                  *system* system
-                  *db* (:kondoq/db system)]
-      (try
-        (f)
-        (finally
-          (ig/halt! *system*)
-          (.delete test-db-file))))))
+  (with-redefs [fetch-github-resource mocked-fetch-github-resource]
+    (f)))
 
-(defn database-fixture [f]
-  (db/delete-schema *db*)
-  (db/create-schema *db*)
-  (f))
-
-(t/use-fixtures :once system-fixture)
-(t/use-fixtures :each database-fixture)
+(t/use-fixtures :once tu/system-fixture system-fixture)
+(t/use-fixtures :each tu/database-fixture)
 
 (defn poll-for-occurrences [n]
   (let [occurrences (db/search-occurrences *db* "clojure.core/defn")]

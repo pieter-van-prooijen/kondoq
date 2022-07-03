@@ -36,8 +36,8 @@
 
 (defn create-schema [db]
   (jdbc/execute! db [(str "CREATE TABLE projects ("
-                          " project TEXT PRIMARY KEY,"
-                          " location TEXT NOT NULL)",)])
+                          " project TEXT PRIMARY KEY CHECK(length(project) <= 127),"
+                          " location TEXT NOT NULL CHECK(length(location) <= 255))",)])
   (jdbc/execute! db ["CREATE INDEX projects_location_index ON projects(location)"])
 
   (jdbc/execute! db [(str "CREATE TABLE namespaces ("
@@ -62,6 +62,11 @@
   (jdbc/execute! db ["DROP TABLE IF EXISTS occurrences"])
   (jdbc/execute! db ["DROP TABLE IF EXISTS namespaces"])
   (jdbc/execute! db ["DROP TABLE IF EXISTS projects"]))
+
+(defn schema-exists [db]
+  (let [[{:keys [cnt]}]
+        (jdbc/execute! db ["SELECT count(*) as cnt FROM sqlite_master WHERE type='table' AND name='occurrences'"])]
+    (= cnt 1)))
 
 (defn insert-project [db project location]
   (let [sql (-> (sql-h/insert-into :projects)
@@ -97,13 +102,22 @@
                                                :ns-count 0
                                                :ns-total -1}))))
 
-(defn update-project-status [location project ns-count ns-total]
+(defn update-project-status [location project ns-count ns-total current-file]
   (swap! current-projects (fn [m]
-                            (update m location (fn [p]
-                                                 (merge p {:location location
-                                                           :project project
-                                                           :ns-count ns-count
-                                                           :ns-total ns-total}))))))
+                            (update m location
+                                    (fn [p]
+                                      (merge p {:location location
+                                                :project project
+                                                :ns-count ns-count
+                                                :ns-total ns-total
+                                                :current-file current-file}))))))
+
+(defn update-project-with-error [location error]
+  (swap! current-projects (fn [m]
+                            (update m location
+                                    (fn [p]
+                                      (merge p {:location location
+                                                :error error}))))))
 
 (defn fetch-project-status [location]
   (get @current-projects location))
@@ -198,3 +212,14 @@
     {:projects projects
      :namespaces namespaces
      :occurrences occurrences}))
+
+(comment
+
+  (defn- db [] (:kondoq/db integrant.repl.state/system))
+
+  (db)
+  (schema-exists (db))
+
+  (delete-schema (db))
+  (create-schema (db))
+  )

@@ -86,10 +86,19 @@
    (>evt [::events/fetch-namespaces-occurrences
           [symbol]])))
 
+(defn invoke-fetch-with-enter [symbol e]
+  (when (= (.-code e) "Enter")
+    (invoke-fetch symbol e)))
+
 (defn symbol-counts-row [substr {:keys [symbol count]}]
   (let [[before middle after] (util/split-with-substr symbol substr)]
     ^{:key symbol}
-    [:tr.symbol-counts-row.is-clickable {:on-click (partial invoke-fetch symbol)}
+    [:tr.symbol-counts-row.is-clickable {:on-click
+                                         (partial invoke-fetch symbol)
+                                         :tab-index
+                                         0
+                                         :on-key-down
+                                         (partial invoke-fetch-with-enter symbol)}
      [:td
       before
       [:span.has-text-weight-bold middle]
@@ -113,7 +122,7 @@
       [:div.button.is-primary {:on-click invoke-fetch}
        "Search"]]]
     [:p.help "Type three or more characters of a var for a list of matches,"
-     " selectable using the mouse."]]
+     " selectable using the mouse or <TAB>."]]
 
    ;; type-ahead table
    [:table.table.is-family-monospace

@@ -33,7 +33,7 @@
 ;; event tupple
 (re-frame/reg-fx
  :http
- (fn [[url success-event-or-tupple method]]
+ (fn [[url success-event-or-tupple method body headers]]
    (xhrio/send url
                (fn [ev]
                  (let [^XMLHttpRequest target (.-target ev)
@@ -42,8 +42,8 @@
                      (re-frame/dispatch success-event-or-tupple)
                      (re-frame/dispatch [success-event-or-tupple response]))))
                (or method "GET")
-               nil
-               #js {:accept "application/edn"})))
+               body
+               (clj->js (merge {:accept "application/edn"} headers)))))
 
 
 (re-frame/reg-event-fx
