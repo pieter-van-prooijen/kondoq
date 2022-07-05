@@ -13,6 +13,9 @@
 (defn extract-context [lines line ranges]
   (when-let [[from to] (->> ranges
                             (filter (fn [[start end]] (<= start line end)))
+                            ;; if multiple contexts match, use the largest
+                            (sort (fn [[a-start a-end] [b-start b-end]]
+                                    (- (- b-end b-start) (- a-end a-start))))
                             (first))]
     [from (extract-lines lines from to)]))
 
@@ -20,7 +23,7 @@
 (defn valid-var-usage? [usage]
   (every? (partial get usage) [:to :name :from :row]))
 
-;; analyze the source file at path, returning a namespace / occurrences tupple
+;; analyze the source file at path, returning a namespace / usages tupple
 (defn analyze [path]
   (let [{analysis :analysis} (clj-kondo/run! {:lint [path]
                                               :config {:analysis true
@@ -28,6 +31,10 @@
         var-definition-ranges (map (fn [{:keys [row end-row]}]
                                      [row end-row])
                                    (:var-definitions analysis))
+        var-usages-ranges (->> (:var-usages analysis)
+                               (filter valid-var-usage?)
+                               (map (fn [{:keys [row name-row end-row]}]
+                                      [(or name-row row) end-row])))
         lines (->> path
                    io/file
                    io/reader
@@ -36,23 +43,27 @@
         namespace (-> (:namespace-definitions analysis)
                       first
                       :name)
-        occurrences (->> (:var-usages analysis)
-                         (filter valid-var-usage?)
-                         (map (fn [{:keys [:to :name :from :row]}]
-                                (let [[start-context context]
-                                      (extract-context lines row var-definition-ranges)]
-                                  {:symbol (symbol (clojure.core/name to) (clojure.core/name name))
-                                   :ns from
-                                   :line-no row
-                                   :line (extract-lines lines row row)
-                                   :start-context start-context
-                                   :context context}))))]
-    [namespace occurrences]))
+        usages(->> (:var-usages analysis)
+                   (filter valid-var-usage?)
+                   (map (fn [{:keys [:to :name :from :row :arity]}]
+                          (let [[start-context context]
+                                (or (extract-context lines row var-definition-ranges)
+                                    (extract-context lines row var-usages-ranges))]
+                            {:symbol (symbol (clojure.core/name to) (clojure.core/name name))
+                             :arity arity
+                             :used-in-ns from
+                             :line-no row
+                             :line (extract-lines lines row row)
+                             :start-context start-context
+                             :context context}))))]
+    [namespace usages]))
 
 (comment
 
-  (analyze "src/kondoq/views.cljs")
-
+  (analyze "/home/pieter/projects/Clojure/frontpage/frontpage-re-frame/src/cljs/frontpage_re_frame/handlers/core.cljs")
+  (analyze "/home/pieter/projects/Clojure/kafka-streams/src/kafka_streams/aggregate.clj")
+  a
+  u
   (str 'clojure.core/inc)
   (def l(->> "src/kondoq/util.cljs"
              io/file

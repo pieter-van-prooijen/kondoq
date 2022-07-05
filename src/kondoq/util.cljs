@@ -13,7 +13,7 @@
 
 (def >evt re-frame.core/dispatch)
 
-(defn occurrence-key [{:keys [ns line-no]}]
+(defn usage-key [{:keys [ns line-no]}]
   (str ns "-" line-no))
 
 ;; Add (zero based) line numbers and the highlight the current line

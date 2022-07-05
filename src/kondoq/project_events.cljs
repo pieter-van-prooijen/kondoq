@@ -61,7 +61,7 @@
  (fn-traced [{:keys [db]} [_ _]]
             {:db (assoc db :projects-state :showing-projects
                         :current-project {})
-             :dispatch [::events/fetch-namespaces-occurrences ""]}))
+             :dispatch [::events/fetch-namespaces-usages ""]}))
 
 (re-frame/reg-event-fx
  ::fetch-project
@@ -83,7 +83,7 @@
     (or (empty? project) (= ns-total ns-count))
     {:db (assoc db :projects-state :showing-projects
                 :current-project {})
-     :dispatch [::events/fetch-namespaces-occurrences ""]} ; reload projects
+     :dispatch [::events/fetch-namespaces-usages ""]} ; reload projects
     :else
     {:db (assoc db :projects-state :adding-project
                 :current-project project)
@@ -100,7 +100,7 @@
  (fn-traced [{:keys [_]} [_ location]]
             {:http [(-> "projects"
                         (goog.uri.utils/appendPath (js/encodeURIComponent location)))
-                    [::events/fetch-namespaces-occurrences ""]
+                    [::events/fetch-namespaces-usages ""]
                     "DELETE"]}))
 
 (comment

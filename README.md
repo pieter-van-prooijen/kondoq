@@ -5,10 +5,17 @@ show var usages in public clojure-(script) projects.
 
 TODO:
 - production: logging, prod build, deploy to external server (build scripts), more tests
-  deploy to pcextreme, lets encrypt?
-- up-to-date sqlite jdbc driver? (support for 3.39, strict tables etc.)
+  deploy to pcextreme, lets encrypt? *in*
+- handle different arities (in type-ahead, allow for all arities as well)
+  distinguish between a specific arity (including zero), all arities and un-used arity (n/a) (e.g. in a higher order function call)
+- paging for large result sets for common vars
+- give preference to "well-known" repositories?
+- 
+- up-to-date sqlite jdbc driver? (support for 3.39, strict tables etc.), perhaps use system installed lib instead
+  of unpacking the one in the jar?
 - split in read/write databases (sqlite: file:bla.sqlite?mode=ro ) for later move to single writer?
-- strip leading whitespace when context is collapsed?
+  (note that read-only replicas in litestream are not working and wil be replaced)
+- strip leading whitespace when code context is collapsed?
 - delete projects *in*
 - put newly added projects on top with "added" date
 

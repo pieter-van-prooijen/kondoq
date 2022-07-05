@@ -1,5 +1,6 @@
 (ns kondoq.database
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as string]
+            [clojure.tools.logging :as log]
             [honey.sql :as sql]
             [honey.sql.helpers :as sql-h]
             [integrant.core :as ig]
@@ -47,25 +48,27 @@
                           " FOREIGN KEY(project) REFERENCES projects(project) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED )")])
   (jdbc/execute! db ["CREATE INDEX namespaces_project_index ON namespaces(project)"])
 
-  (jdbc/execute! db [(str "CREATE TABLE occurrences ("
+  (jdbc/execute! db [(str "CREATE TABLE var_usages ("
                           " symbol TEXT NOT NULL,"
-                          " ns TEXT NOT NULL,"
+                          " arity INTEGER,"
+                          " used_in_ns TEXT NOT NULL,"
                           " line_no INTEGER NOT NULL,"
                           " line TEXT NOT NULL,"
                           " start_context INTEGER,"
                           " context TEXT,"
-                          " FOREIGN KEY(ns) REFERENCES namespaces(ns) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED )")])
-  (jdbc/execute! db ["CREATE INDEX occurrences_symbol_index ON occurrences(symbol)"])
-  (jdbc/execute! db ["CREATE INDEX occurrences_ns_index ON occurrences(ns)"]))
+                          " FOREIGN KEY(used_in_ns) REFERENCES namespaces(ns) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED )")])
+  (jdbc/execute! db ["CREATE INDEX var_usages_symbol_index ON var_usages(symbol)"])
+  (jdbc/execute! db ["CREATE INDEX var_usages_arity_index ON var_usages(arity)"])
+  (jdbc/execute! db ["CREATE INDEX var_usages_ns_index ON var_usages(used_in_ns)"]))
 
 (defn delete-schema [db]
-  (jdbc/execute! db ["DROP TABLE IF EXISTS occurrences"])
+  (jdbc/execute! db ["DROP TABLE IF EXISTS var_usages"])
   (jdbc/execute! db ["DROP TABLE IF EXISTS namespaces"])
   (jdbc/execute! db ["DROP TABLE IF EXISTS projects"]))
 
 (defn schema-exists [db]
   (let [[{:keys [cnt]}]
-        (jdbc/execute! db ["SELECT count(*) as cnt FROM sqlite_master WHERE type='table' AND name='occurrences'"])]
+        (jdbc/execute! db ["SELECT count(*) as cnt FROM sqlite_master WHERE type='table' AND name='var_usages'"])]
     (= cnt 1)))
 
 (defn insert-project [db project location]
@@ -76,7 +79,7 @@
                 (sql/format {:pretty true}))]
     (jdbc/execute! db sql)))
 
-;; foreign key constraints should delete all occurrences/namespaces as well
+;; foreign key constraints should delete all usages/namespaces as well
 (defn delete-project [db project]
   (let [sql (sql/format {:delete-from :projects
                          :where [:= :project :?project]}
@@ -89,86 +92,62 @@
                         {:params {:location location}})
         _ (jdbc/execute! db sql)]))
 
-;;
-;; Temporary project properties while they are being added.
-;; In *memory*, works because of single-writer
-(def current-projects (atom {}))
-
-(defn init-project-status [location project-future]
-  (swap! current-projects (fn [m]
-                            (assoc m location {:future project-future
-                                               :location location
-                                               :project ""
-                                               :ns-count 0
-                                               :ns-total -1}))))
-
-(defn update-project-status [location project ns-count ns-total current-file]
-  (swap! current-projects (fn [m]
-                            (update m location
-                                    (fn [p]
-                                      (merge p {:location location
-                                                :project project
-                                                :ns-count ns-count
-                                                :ns-total ns-total
-                                                :current-file current-file}))))))
-
-(defn update-project-with-error [location error]
-  (swap! current-projects (fn [m]
-                            (update m location
-                                    (fn [p]
-                                      (merge p {:location location
-                                                :error error}))))))
-
-(defn fetch-project-status [location]
-  (get @current-projects location))
-
-(defn delete-project-status [location]
-  (swap! current-projects (fn [m] (dissoc m location))))
-
 (defn insert-path [db project path location]
-  (let [[namespace occurrences] (analysis/analyze path)]
-    (when (and namespace (seq occurrences))
+  (let [[namespace usages] (analysis/analyze path)]
+    (when (and namespace (seq usages))
       (let [sql (-> (sql-h/insert-into :namespaces)
                     (sql-h/values [{:ns (str namespace)
                                     :location location
                                     :project project}])
                     (sql/format {:pretty true}))
             _ (jdbc/execute! db sql)
-            sql (-> (sql-h/insert-into :occurrences)
+            sql (-> (sql-h/insert-into :var-usages)
                     (sql-h/values (map (fn [o]
                                          (-> o
                                              (update :symbol str)
-                                             (update :ns str)))
-                                       occurrences))
+                                             (update :used-in-ns str)))
+                                       usages))
                     (sql/format {:pretty true}))
             _ (jdbc/execute! db sql)]))))
 
-(defn search-occurrences [db fq-symbol-name]
-(let [sql (sql/format {:select [[:o.symbol :symbol]
-                                [:o.ns :ns]
-                                [:o.line-no :line-no]
-                                [:o.line :line]
-                                [:o.start-context :start-context]
-                                [:o.context :context]]
-                       :from [[:occurrences :o]]
-                       :where [:= :o.symbol :?symbol-name]
-                       :order-by [[:namespaces.project :asc] [:o.ns :asc] [:o.line-no :asc]]
-                       :inner-join [:namespaces [:= :o.ns :namespaces.ns]]}
-                      {:params {:symbol-name fq-symbol-name}
-                       :pretty true})]
-  (jdbc-sql/query db sql)))
+(defn- symbol-arity-where-clause [arity]
+  (cond
+    (string/blank? arity) [:and
+                           [:= :u.symbol :?symbol]
+                           [:= :u.arity nil]]
+    (= "-1" arity) [:= :u.symbol :?symbol]
+    :else [:and [:= :u.symbol :?symbol] [:= :u.arity :?arity]]))
 
-(defn search-namespaces [db fq-symbol-name]
-(let [sql (sql/format
-           {:select-distinct [[:n.ns :ns]
-                              [:n.project :project]
-                              [:n.location :location]]
-            :from [[:namespaces :n] [:occurrences :o]]
-            :where [:= :o.symbol :?symbol-name]
-            :inner-join [:namespaces [:= :o.ns :namespaces.ns]]}
-           {:params {:symbol-name fq-symbol-name}
-            :pretty true})]
-  (jdbc-sql/query db sql)))
+(defn search-usages [db fq-symbol-name arity]
+  (let [sql (sql/format {:select [[:u.symbol :symbol]
+                                  [:u.arity :arity]
+                                  [:u.used-in-ns :used-in-ns]
+                                  [:u.line-no :line-no]
+                                  [:u.line :line]
+                                  [:u.start-context :start-context]
+                                  [:u.context :context]]
+                         :from [[:var-usages :u]]
+                         :where (symbol-arity-where-clause arity)
+                         :order-by [[:n.project :asc] [:u.used-in-ns :asc] [:u.line-no :asc]]
+                         :inner-join [[:namespaces :n] [:= :u.used-in-ns :n.ns]]}
+                        {:params {:symbol fq-symbol-name
+                                  :arity arity}
+                         :pretty true})]
+    (jdbc-sql/query db sql)))
+
+(defn search-namespaces [db fq-symbol-name arity]
+  (let [sql (sql/format
+             {:select-distinct [[:n.ns :ns]
+                                [:n.project :project]
+                                [:n.location :location]]
+              :from [[:namespaces :n]]
+              :where (symbol-arity-where-clause arity)
+              :inner-join [[:var-usages :u] [:= :u.used-in-ns :n.ns]]}
+             {:params {:symbol fq-symbol-name
+                       :arity arity}
+              :pretty true})]
+    (def --sql sql)
+    (jdbc-sql/query db sql)))
 
 (defn search-projects [db]
 (let [sql (sql/format
@@ -188,38 +167,60 @@
 (defn search-symbol-counts [db q limit]
   (let [sql (sql/format
              {:select-distinct [:symbol
+                                :arity
+                                [[:over [[:count :*]
+                                         {:partition-by [:symbol :arity]}
+                                         :count]]]
                                 [[:over [[:count :*]
                                          {:partition-by [:symbol]}
-                                         :count]]]]
-              :from [:occurrences]
+                                         :all-arities-count]]]]
+              :from [:var-usages]
               :where [:like :symbol :?q]
-              :order-by [[:count :desc]]
+              :order-by [[:all-arities-count :desc] [:count :desc][:arity :asc]]
               :limit :?limit}
              {:params {:q q
                        :limit limit}
               :pretty true})]
-    (jdbc-sql/query db sql)))
+    (->> (jdbc-sql/query db sql)
+         (partition-by :symbol)
+         ;; insert a pseudo entry for all arities in the list
+         (mapcat (fn [symbols]
+                   (if (> (count symbols) 1)
+                     (let [{:keys [symbol all-arities-count]} (first symbols)]
+                       (into [{:symbol symbol
+                               :arity -1
+                               :count all-arities-count
+                               :all-arities-count
+                               all-arities-count}]
+                             symbols))
+                     symbols))))))
 
-(defn fetch-projects-namespaces-occurrences [db fq-symbol-name]
-  (let [occurrences (->> (search-occurrences db fq-symbol-name)
-                         (map (fn [o] (-> o
-                                          (update :symbol symbol)
-                                          (update :ns symbol)))))
-        namespaces (->> (search-namespaces db fq-symbol-name)
+(defn fetch-projects-namespaces-usages [db fq-symbol-name arity]
+  (let [usages (->> (search-usages db fq-symbol-name arity)
+                    (map (fn [o] (-> o
+                                     (update :symbol symbol)
+                                     (update :used-in-ns symbol)))))
+        namespaces (->> (search-namespaces db fq-symbol-name arity)
                         (map (fn [ns] (-> ns
                                           (update :ns symbol)))))
         projects (search-projects db)]
     {:projects projects
      :namespaces namespaces
-     :occurrences occurrences}))
+     :usages usages}))
 
 (comment
 
   (defn- db [] (:kondoq/db integrant.repl.state/system))
 
   (db)
+  (search-symbol-counts (db) "%defn%" 10)
+  (time (and (search-usages  (db) "clojure.core/defn" "-1") :finished))
+  (time (search-namespaces (db) "clojure.core/defn" "-1"))
+  
+  --sql
   (schema-exists (db))
 
+  (jdbc/execute! (db) ["pragma cache_size;"])
   (delete-schema (db))
   (create-schema (db))
   )

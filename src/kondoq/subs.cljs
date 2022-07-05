@@ -1,6 +1,6 @@
 (ns kondoq.subs
   (:require
-   [kondoq.util :refer [occurrence-key]]
+   [kondoq.util :refer [usage-key]]
    [re-frame.core :refer [reg-sub]]))
 
 ;; change the last coll in colls to a seq of [[x count] nil]
@@ -32,26 +32,26 @@
         (update key add-count-to-last-coll)
         (update key (partial add-new-coll current-value)))))
 
-(defn add-occurrence [expanded
-                      indexed-namespaces
-                      {:keys [projects namespaces skip] :as result}
-                      occurrence]
+(defn add-usage [expanded
+                 indexed-namespaces
+                 {:keys [projects namespaces skip] :as result}
+                 usage]
   (let [last-project (first (last projects))
         last-namespace (first (last namespaces))
-        current-namespace (:ns occurrence)
+        current-namespace (:used-in-ns usage)
         current-project (get-in indexed-namespaces
                                 [current-namespace :project]
                                 (str current-namespace "-UNKNOWN"))
         current-location (get-in indexed-namespaces [current-namespace :location])
-        ;; add the location to the occurrence to construct the source file link
-        updated-occurrence (assoc occurrence :location current-location)]
+        ;; add the location to the usage to construct the source file link
+        updated-usage (assoc usage :location current-location)]
 
     (if (or (skip current-project) (skip current-namespace))
       result
       (-> result
           (update-colls :projects last-project current-project)
           (update-colls :namespaces last-namespace current-namespace)
-          (update :occurrences (partial add-to-last-coll [updated-occurrence 1]))
+          (update :usages (partial add-to-last-coll [updated-usage 1]))
           ;; skip any project or namespace in the next iteration
           (update :skip (fn [skip] (reduce (fn [r x]
                                              (if (not (expanded x))
@@ -68,27 +68,32 @@
 ;;  [nil
 ;;   nil
 ;;   [{:symbol inc, :ns re-frame.core, :line-no 43, :line "(inc y)"} 1]])
-(defn occurrences-as-rows [expanded indexed-namespaces occurrences]
-  (-> (reduce (partial add-occurrence expanded indexed-namespaces)
-              {:projects [] :namespaces [] :occurrences [] :skip #{}}
-              occurrences)
+(defn usages-as-rows [expanded indexed-namespaces usages]
+  (-> (reduce (partial add-usage expanded indexed-namespaces)
+              {:projects [] :namespaces [] :usages [] :skip #{}}
+              usages)
       (update :projects add-count-to-last-coll)
       (update :namespaces add-count-to-last-coll)
       (as-> $
           (map vector
                (apply concat (:projects $))
                (apply concat (:namespaces $))
-               (apply concat (:occurrences $))))))
+               (apply concat (:usages $))))))
 
 (reg-sub
- ::occurrences
+ ::usages
  (fn [db _]
-   (:occurrences db)))
+   (:usages db)))
 
 (reg-sub
  ::symbol
  (fn [db _]
    (:symbol db)))
+
+(reg-sub
+ ::arity
+ (fn [db _]
+   (:arity db)))
 
 (reg-sub
  ::namespaces
@@ -121,26 +126,26 @@
  (fn [db _]
    (:symbol-counts-q db)))
 
-;; convert the occurrences into a sequence of rows for display in table
+;; convert the usages into a sequence of rows for display in table
 
 (reg-sub
- ::occurrence-rows
- :<- [::occurrences]
+ ::usages-rows
+ :<- [::usages]
  :<- [::indexed-namespaces]
  :<- [::expanded]
- (fn [[occurrences indexed-namespaces expanded] _]
-   (occurrences-as-rows expanded indexed-namespaces occurrences)))
+ (fn [[usages indexed-namespaces expanded] _]
+   (usages-as-rows expanded indexed-namespaces usages)))
 
 ;; keep track of generic child -> parent relationships for proper ui display
 (reg-sub
  ::parents
- :<- [::occurrences]
+ :<- [::usages]
  :<- [::indexed-namespaces]
- (fn [[occurrences indexed-namespaces] _]
+ (fn [[usages indexed-namespaces] _]
    (-> {}
        (into (map (fn [o]
-                    [(occurrence-key o) (:ns o)])
-                  occurrences))
+                    [(usage-key o) (:ns o)])
+                  usages))
        (into (map (fn [[ns {project :project}]]
                     [ns project])
                   indexed-namespaces)))))
@@ -171,7 +176,7 @@
   (add-count-to-last-coll [])
 
 
-  (occurrences-as-rows #{"re-frame"} (:namespaces kondoq.db/default-db) (:occurrences kondoq.db/default-db))
+  (usages-as-rows #{"re-frame"} (:namespaces kondoq.db/default-db) (:usages kondoq.db/default-db))
 
 
   )

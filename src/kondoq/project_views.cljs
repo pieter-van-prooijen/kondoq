@@ -25,7 +25,7 @@
      [:div.modal-background {:on-click cancel-projects}]
      [:div.modal-card
       [:header.modal-card-head
-       [:p.modal-card-title "Add Github project"]
+       [:p.modal-card-title "Add GitHub project"]
        [:button.delete {:on-click cancel-projects}]]
       [:section.modal-card-body
        [:form {:on-submit add-project}
@@ -39,7 +39,7 @@
          [:p.help "Project URL should have the form https://github.com/<user>/<project>"]]
 
         [:div.field
-         [:label.label "Github Personal Access Token (optional)"]
+         [:label.label "GitHub Personal Access Token (optional)"]
          [:div.control
           [:input.input {:id "token"
                          :name "token"
@@ -47,7 +47,7 @@
          [:p.help {:dangerouslySetInnerHTML
                    {:__html
                     (str "Without authorization, the GitHub API is limited to 200 requests/h. <br>"
-                         "Get a personal access token (for retrieving public git repositories) "
+                         "Get a personal access token (<strong>only</strong> for retrieving public git repositories) "
                          "from your github account settings at "
                          "<a target='_blank' href='https://github.com/settings/tokens'>https://github.com/settings/tokens</a>.<br>"
                          "This token will <strong>not</strong> be stored or logged in the Kondoq backend.")}}]]

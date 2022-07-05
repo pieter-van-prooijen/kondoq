@@ -11,7 +11,7 @@
             ;; just fetch the projects, no query
             {:db {:active-panel :search
                   :expanded #{}}
-             :dispatch [::fetch-namespaces-occurrences ""]}))
+             :dispatch [::fetch-namespaces-usages "" nil]}))
 
 ;; when clicking on an item, automatically expand all its items to the left
 (defn expand-ancestors [k parents expanded]
@@ -47,20 +47,25 @@
 
 
 (re-frame/reg-event-fx
- ::fetch-namespaces-occurrences
- (fn-traced [{:keys [db]} [_ [fq-symbol-name]]]
-            {:http [(goog.uri.utils/appendParam "/occurrences"
-                                                "fq-symbol-name" fq-symbol-name)
-                    ::process-fetch-namespaces-occurrences]
-             :db (assoc db :symbol fq-symbol-name)}))
+ ::fetch-namespaces-usages
+ (fn-traced [{:keys [db]} [_ [fq-symbol-name arity]]]
+            {:http [(-> "/usages"
+                        (goog.uri.utils/appendParam "fq-symbol-name"
+                                                    fq-symbol-name)
+                        (goog.uri.utils/appendParam "arity"
+                                                    arity))
+                    ::process-fetch-namespaces-usages]
+             :db (-> db
+                     (assoc :symbol fq-symbol-name)
+                     (assoc :arity arity))}))
 
 (re-frame/reg-event-db
- ::process-fetch-namespaces-occurrences
+ ::process-fetch-namespaces-usages
  (fn-traced [db [_ response-body]]
-            (let [{:keys [projects namespaces occurrences]} (read-string response-body)]
+            (let [{:keys [projects namespaces usages]} (read-string response-body)]
               (-> db
                   (assoc :namespaces namespaces)
-                  (assoc :occurrences occurrences)
+                  (assoc :usages usages)
                   (assoc :projects projects)
                   (assoc :symbol-counts [])))))
 

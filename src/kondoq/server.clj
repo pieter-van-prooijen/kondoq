@@ -34,7 +34,7 @@
   (db/delete-schema (db))
 
   (db/search-namespaces (db) "clojure.core/inc")
-  (db/fetch-projects-namespaces-occurrences (db) "cljs.core/str")
+  (db/fetch-projects-namespaces-usages (db) "cljs.core/str")
   (db/search-projects (db))
 
   (db/search-symbol-counts (db) "%dec%" 5)

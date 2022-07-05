@@ -8,6 +8,7 @@
             [kondoq.analysis]
             [kondoq.database :as db]
             [kondoq.etag :refer [get-etag-body insert-etag-body]]
+            [kondoq.project-status :as project-status]
             [next.jdbc :as jdbc]
             [next.jdbc.transaction])
   (:import java.util.Base64))
@@ -100,20 +101,20 @@
           (let [{:keys [content encoding]}
                 (fetch-github-resource etag-db blob-url token)]
             (insert-git-blob db project content encoding sha display-url)
-            (db/update-project-status project-url project (inc index) ns-total
-                                      display-url)
+            (project-status/update-project-status project-url project (inc index) ns-total
+                                                  display-url)
             (when (Thread/interrupted)
               (throw (InterruptedException. "upsert-project cancelled")))))))
     (catch Throwable t
       ;; normal cancel should not be reported as an error
       (when-not (instance? InterruptedException t)
         (log/warn t "upsert-project saw exception:")
-        (db/update-project-with-error project-url (.getMessage t))))
+        (project-status/update-project-with-error project-url (.getMessage t))))
     (finally
       ;; keep the project status around in case an error happened.
-      (let [{error :error} (db/fetch-project-status project-url)]
+      (let [{error :error} (project-status/fetch-project-status project-url)]
         (when-not error
-          (db/delete-project-status project-url))))))
+          (project-status/delete-project-status project-url))))))
 
 (comment
 

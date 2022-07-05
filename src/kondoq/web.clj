@@ -3,13 +3,14 @@
             [integrant.core :as ig]
             [kondoq.database :as db]
             [kondoq.github :as github]
+            [kondoq.project-status :as project-status]
             [reitit.ring :as rring]
             [ring.adapter.jetty :as jetty]
             [ring.middleware.keyword-params :as keyword-params]
             [ring.middleware.params :as params]
             [ring.middleware.resource :as resource]
             [ring.util.response :as resp]
-            [clojure.string :as string]))
+            ))
 
 (def config {:adapter/jetty {:port 3002
                              :db (ig/ref :kondoq/db)
@@ -45,9 +46,9 @@
   (.join server)
   (log/info "stopped jetty server" server))
 
-(defn fetch-projects-namespaces-occurrences-handler [{:keys [db params]}]
-  (let [fq-symbol-name (:fq-symbol-name params)
-        body (db/fetch-projects-namespaces-occurrences db fq-symbol-name)]
+(defn fetch-projects-namespaces-usages-handler [{:keys [db params]}]
+  (let [{:keys [fq-symbol-name arity]} params
+        body (db/fetch-projects-namespaces-usages db fq-symbol-name arity)]
     (-> body
         pr-str
         resp/response
@@ -55,7 +56,7 @@
 
 (defn fetch-symbol-counts-handler [{:keys [db params]}]
   (let [q (:q params)
-        body (if (> (count q) 2)
+        body (if (>= (count q) 2)
                (db/search-symbol-counts db (str "%" q "%") 10)
                [])]
     (-> body
@@ -71,12 +72,12 @@
     (log/info "adding project with url and token ending in"
               project-url
               (if token (re-find #".{4}$" token) "(no-token)"))
-    (db/init-project-status project-url project-future)
+    (project-status/init-project-status project-url project-future)
     (resp/created (str "/projects/" project-url))))
 
 (defn get-project-status-handler [request]
   (let [project-url (get-in request [:reitit.core/match :path-params :project-url])]
-    (-> (or (db/fetch-project-status project-url) {})
+    (-> (or (project-status/fetch-project-status project-url) {})
         (dissoc :future)
         pr-str
         resp/response
@@ -92,7 +93,7 @@
 
 (defn cancel-add-project-handler [request]
   (let [project-url (get-in request [:reitit.core/match :path-params :project-url])
-        {project-future :future} (db/fetch-project-status project-url)]
+        {project-future :future} (project-status/fetch-project-status project-url)]
     (if (future? project-future)
       (let [result (.cancel project-future true)]
         (log/info "cancelled upload of project (result, is-cancelled): "
@@ -103,7 +104,7 @@
 
 (defn create-handler []
   (let [router (rring/router
-                [["/occurrences" fetch-projects-namespaces-occurrences-handler]
+                [["/usages" fetch-projects-namespaces-usages-handler]
                  ["/symbol-counts" fetch-symbol-counts-handler]
                  ["/projects/:project-url" {:name :projects ; name is required?
                                             :get get-project-status-handler
@@ -115,8 +116,17 @@
 
 (comment
 
+  (defn- db [] (:kondoq/db integrant.repl.state/system))
+
   (def h (create-handler))
   (h {:request-method :get :uri "/projects/https%3A%2F%2Fgithub.com%2Fpieter-van-prooijen%2Fkafka-streams-clojure"})
   (h {:request-method :get :uri "/symbol-counts"})
   (h )
+
+  
+  (require 'clj-http.client)
+  (clj-http.client/get "http://localhost:8280/usages?fq-symbol-name&arity")
+  (time (and (fetch-projects-namespaces-usages-handler {:params {:fq-symbol-name "clojure.core/defn"
+                                                                 :arity "-1"}
+                                                        :db (db)}) :finished))
   )

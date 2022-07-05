@@ -3,6 +3,7 @@
             [clojure.test :refer [deftest testing is]:as t]
             [kondoq.database :as db]
             [kondoq.github :refer [upsert-project fetch-github-resource]]
+            [kondoq.project-status :as project-status]
             [kondoq.test-utils :refer [*db*] :as tu])
   (:import java.util.Base64))
 
@@ -47,28 +48,28 @@
 (t/use-fixtures :once tu/system-fixture system-fixture)
 (t/use-fixtures :each tu/database-fixture)
 
-(defn poll-for-occurrences [n]
-  (let [occurrences (db/search-occurrences *db* "clojure.core/defn")]
-    (if (> (count occurrences) 0)
+(defn poll-for-usages [n]
+  (let [usages (db/search-usages *db* "clojure.core/defn" nil)]
+    (if (> (count usages) 0)
       true
       (if (= n 0)
-        (throw (ex-info "poll-for-occurrences expired" {}))
+        (throw (ex-info "poll-for-usages expired" {}))
         (do
           (Thread/sleep 100)
           (recur (dec n)))))))
 
-(defn poll-for-no-occurrences [n]
-  (let [occurrences (db/search-occurrences *db* "clojure.core/defn")]
-    (if (= (count occurrences) 0)
+(defn poll-for-no-usages [n]
+  (let [usages (db/search-usages *db* "clojure.core/defn" nil)]
+    (if (= (count usages) 0)
       true
       (if (= n 0)
-        (throw (ex-info "poll-for-*no*-occurrences expired" {}))
+        (throw (ex-info "poll-for-*no*-usages expired" {}))
         (do
           (Thread/sleep 100)
           (recur (dec n)))))))
 
 (defn poll-for-project-status [location n]
-  (let [{:keys [ns-count]} (db/fetch-project-status location)]
+  (let [{:keys [ns-count]} (project-status/fetch-project-status location)]
     (if (> ns-count 0)
       true
       (if (= n 0)
@@ -82,13 +83,13 @@
 (deftest test-upsert-project
   (testing "upsert a project"
     (upsert-project *db* nil project-url nil)
-    (is (poll-for-occurrences 10) "occurrences should have been added")))
+    (is (poll-for-usages 10) "usages should have been added")))
 
 (deftest test-cancel-upsert-project
   (testing "cancel upserting a project"
     (with-redefs [*slow* true] ; project upload should take about 1500ms
       (let [project-future (future (upsert-project *db* nil project-url nil))]
-        (db/init-project-status project-url project-future)
+        (project-status/init-project-status project-url project-future)
         (is (poll-for-project-status project-url 10)
             "some namespaces should have been added before cancelling")
 
@@ -96,9 +97,9 @@
         (.cancel project-future true)
 
         (Thread/sleep 2000) ; wait till transaction is finished and rolled back
-        (is (nil? (db/fetch-project-status project-url))
+        (is (nil? (project-status/fetch-project-status project-url))
             "project status should have been deleted after cancel")
-        (is (poll-for-no-occurrences 10)
+        (is (poll-for-no-usages 10)
             "the entire project should have been removed in the rollback")))))
 
 
