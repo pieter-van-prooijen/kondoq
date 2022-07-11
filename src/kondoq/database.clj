@@ -53,15 +53,23 @@
                           " arity INTEGER,"
                           " used_in_ns TEXT NOT NULL,"
                           " line_no INTEGER NOT NULL,"
-                          " line TEXT NOT NULL,"
                           " start_context INTEGER,"
-                          " context TEXT,"
-                          " FOREIGN KEY(used_in_ns) REFERENCES namespaces(ns) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED )")])
+                          " end_context INTEGER,"
+                          " FOREIGN KEY(used_in_ns) REFERENCES namespaces(ns) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED)")])
   (jdbc/execute! db ["CREATE INDEX var_usages_symbol_index ON var_usages(symbol)"])
   (jdbc/execute! db ["CREATE INDEX var_usages_arity_index ON var_usages(arity)"])
-  (jdbc/execute! db ["CREATE INDEX var_usages_ns_index ON var_usages(used_in_ns)"]))
+  (jdbc/execute! db ["CREATE INDEX var_usages_ns_index ON var_usages(used_in_ns)"])
+
+  (jdbc/execute! db [(str "CREATE TABLE contexts ("
+                          " ns TEXT NOT NULL,"
+                          " start_context INTEGER NOT NULL,"
+                          " single_line INTEGER NOT NULL,"
+                          " source_code TEXT NOT NULL,"
+                          " FOREIGN KEY(ns) REFERENCES namespaces(ns) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED)")])
+  (jdbc/execute! db ["CREATE UNIQUE INDEX contexts_index ON contexts(ns, start_context, single_line)"]))
 
 (defn delete-schema [db]
+  (jdbc/execute! db ["DROP TABLE IF EXISTS contexts"])
   (jdbc/execute! db ["DROP TABLE IF EXISTS var_usages"])
   (jdbc/execute! db ["DROP TABLE IF EXISTS namespaces"])
   (jdbc/execute! db ["DROP TABLE IF EXISTS projects"]))
@@ -92,8 +100,15 @@
                         {:params {:location location}})
         _ (jdbc/execute! db sql)]))
 
+;; inclusive range, 1- based (as is clj-kondo)
+(defn extract-lines [lines from to]
+  (->> lines
+       (drop (dec from))
+       (take (inc (- to from)))
+       (string/join "\n")))
+
 (defn insert-path [db project path location]
-  (let [[namespace usages] (analysis/analyze path)]
+  (let [[namespace usages source-lines] (analysis/analyze path)]
     (when (and namespace (seq usages))
       (let [sql (-> (sql-h/insert-into :namespaces)
                     (sql-h/values [{:ns (str namespace)
@@ -108,31 +123,65 @@
                                              (update :used-in-ns str)))
                                        usages))
                     (sql/format {:pretty true}))
-            _ (jdbc/execute! db sql)]))))
+            _ (jdbc/execute! db sql)]
+
+        ;; build the contexts for a usage (both single and multi-line)
+        (doseq [{:keys [used-in-ns line-no start-context end-context]} usages]
+          (let [sql (-> (sql-h/insert-into :contexts)
+                        (sql-h/values [{:ns (str used-in-ns)
+                                        :start-context start-context
+                                        :single-line false
+                                        :source_code (extract-lines source-lines start-context end-context)}])
+                        (sql-h/upsert (-> (sql-h/on-conflict)
+                                          (sql-h/do-nothing)))
+                        (sql/format {:pretty true}))
+                _ (println sql)
+                _ (jdbc/execute! db sql)
+                sql (-> (sql-h/insert-into :contexts)
+                        (sql-h/values [{:ns (str used-in-ns)
+                                        :start-context line-no
+                                        :single-line true
+                                        :source_code (extract-lines source-lines line-no line-no)}])
+                        (sql-h/upsert (-> (sql-h/on-conflict)
+                                          (sql-h/do-nothing)))
+                        (sql/format {:pretty true}))
+                _ (jdbc/execute! db sql)]))))))
 
 (defn- symbol-arity-where-clause [arity]
-  (cond
-    (string/blank? arity) [:and
-                           [:= :u.symbol :?symbol]
-                           [:= :u.arity nil]]
-    (= "-1" arity) [:= :u.symbol :?symbol]
-    :else [:and [:= :u.symbol :?symbol] [:= :u.arity :?arity]]))
+  (if (= -1 arity)
+    [:and [:= :u.symbol :?symbol]]
+    [:and
+     [:= :u.symbol :?symbol]
+     [:= :u.arity arity]]))
 
 (defn search-usages [db fq-symbol-name arity]
-  (let [sql (sql/format {:select [[:u.symbol :symbol]
-                                  [:u.arity :arity]
-                                  [:u.used-in-ns :used-in-ns]
-                                  [:u.line-no :line-no]
-                                  [:u.line :line]
-                                  [:u.start-context :start-context]
-                                  [:u.context :context]]
+  (let [sql (sql/format {:select-distinct [[:u.symbol :symbol]
+                                           [:u.arity :arity]
+                                           [:u.used-in-ns :used-in-ns]
+                                           [:u.line-no :line-no]
+                                           [:sc.source-code :line]
+                                           [:u.start-context :start-context]
+                                           [:u.end-context :end-context]
+                                           [:mc.source-code :context]]
                          :from [[:var-usages :u]]
                          :where (symbol-arity-where-clause arity)
                          :order-by [[:n.project :asc] [:u.used-in-ns :asc] [:u.line-no :asc]]
-                         :inner-join [[:namespaces :n] [:= :u.used-in-ns :n.ns]]}
+                         :inner-join [[:namespaces :n]
+                                      [:= :u.used-in-ns :n.ns]
+                                      [:contexts :sc] ; single-line context
+                                      [:and
+                                       [:= :u.used-in-ns :sc.ns]
+                                       [:= true :sc.single-line]
+                                       [:= :u.line-no :sc.start-context]]
+                                      [:contexts :mc] ; multi-line context
+                                      [:and
+                                       [:= :u.used-in-ns :mc.ns]
+                                       [:= false :mc.single-line]
+                                       [:= :u.start-context :mc.start-context]]]}
                         {:params {:symbol fq-symbol-name
                                   :arity arity}
                          :pretty true})]
+    (def --sql sql)
     (jdbc-sql/query db sql)))
 
 (defn search-namespaces [db fq-symbol-name arity]
@@ -146,7 +195,6 @@
              {:params {:symbol fq-symbol-name
                        :arity arity}
               :pretty true})]
-    (def --sql sql)
     (jdbc-sql/query db sql)))
 
 (defn search-projects [db]
@@ -197,6 +245,7 @@
 
 (defn fetch-projects-namespaces-usages [db fq-symbol-name arity]
   (let [usages (->> (search-usages db fq-symbol-name arity)
+                    (remove #(nil? (:symbol %))) ; result with nils caused by filter clauses?
                     (map (fn [o] (-> o
                                      (update :symbol symbol)
                                      (update :used-in-ns symbol)))))
@@ -214,7 +263,7 @@
 
   (db)
   (search-symbol-counts (db) "%defn%" 10)
-  (time (and (search-usages  (db) "clojure.core/defn" "-1") :finished))
+  (search-usages  (db) "cljs.core/inc" -1)
   (time (search-namespaces (db) "clojure.core/defn" "-1"))
   
   --sql

@@ -1,5 +1,6 @@
 (ns kondoq.web
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as string]
+            [clojure.tools.logging :as log]
             [integrant.core :as ig]
             [kondoq.database :as db]
             [kondoq.github :as github]
@@ -9,8 +10,7 @@
             [ring.middleware.keyword-params :as keyword-params]
             [ring.middleware.params :as params]
             [ring.middleware.resource :as resource]
-            [ring.util.response :as resp]
-            ))
+            [ring.util.response :as resp]))
 
 (def config {:adapter/jetty {:port 3002
                              :db (ig/ref :kondoq/db)
@@ -48,7 +48,11 @@
 
 (defn fetch-projects-namespaces-usages-handler [{:keys [db params]}]
   (let [{:keys [fq-symbol-name arity]} params
-        body (db/fetch-projects-namespaces-usages db fq-symbol-name arity)]
+        body (db/fetch-projects-namespaces-usages db
+                                                  fq-symbol-name
+                                                  (if (string/blank? arity)
+                                                    nil
+                                                    (parse-long arity)))]
     (-> body
         pr-str
         resp/response
@@ -126,7 +130,7 @@
   
   (require 'clj-http.client)
   (clj-http.client/get "http://localhost:8280/usages?fq-symbol-name&arity")
-  (time (and (fetch-projects-namespaces-usages-handler {:params {:fq-symbol-name "clojure.core/defn"
-                                                                 :arity "-1"}
-                                                        :db (db)}) :finished))
+  (fetch-projects-namespaces-usages-handler {:params {:fq-symbol-name "clojure.core/inc"
+                                                      :arity "-1"}
+                                             :db (db)})
   )

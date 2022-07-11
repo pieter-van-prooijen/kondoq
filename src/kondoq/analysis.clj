@@ -17,13 +17,13 @@
                             (sort (fn [[a-start a-end] [b-start b-end]]
                                     (- (- b-end b-start) (- a-end a-start))))
                             (first))]
-    [from (extract-lines lines from to)]))
+    [from to (extract-lines lines from to)]))
 
 ;; some usages don't have a :to entry (e.g. in case of "js/.." vars)
 (defn valid-var-usage? [usage]
   (every? (partial get usage) [:to :name :from :row]))
 
-;; analyze the source file at path, returning a namespace / usages tupple
+;; analyze the source file at path, returning a namespace / usages / source-lines tupple
 (defn analyze [path]
   (let [{analysis :analysis} (clj-kondo/run! {:lint [path]
                                               :config {:analysis true
@@ -46,17 +46,16 @@
         usages(->> (:var-usages analysis)
                    (filter valid-var-usage?)
                    (map (fn [{:keys [:to :name :from :row :arity]}]
-                          (let [[start-context context]
+                          (let [[start-context end-context _]
                                 (or (extract-context lines row var-definition-ranges)
                                     (extract-context lines row var-usages-ranges))]
                             {:symbol (symbol (clojure.core/name to) (clojure.core/name name))
                              :arity arity
                              :used-in-ns from
                              :line-no row
-                             :line (extract-lines lines row row)
                              :start-context start-context
-                             :context context}))))]
-    [namespace usages]))
+                             :end-context end-context}))))]
+    [namespace usages lines]))
 
 (comment
 

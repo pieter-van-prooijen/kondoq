@@ -18,6 +18,9 @@
 *~
 \#*\#
 
+*.iml
+/.idea
+
 #
 # App specific ignores
 /data
