@@ -1,6 +1,7 @@
 (ns kondoq.views
   (:require [goog.dom :as dom]
             [kondoq.events :as events]
+            [kondoq.pagination]
             [kondoq.project-views :as project-views]
             [kondoq.subs :as subs]
             [kondoq.util :refer [<sub >evt usage-key add-line-markup] :as util]))
@@ -16,20 +17,13 @@
         is-expanded (expanded x)
         parents (<sub [::subs/parents])
         ancestors-expanded (ancestors-expanded x parents expanded)]
-    [:span.tag {:on-click (fn [e]
-                            (.preventDefault e)
-                            (>evt [::events/toggle-expanded [x parents]]))}
+    [:span.tag.is-size-6 {:on-click (fn [e]
+                                      (.preventDefault e)
+                                      (>evt [::events/toggle-expanded [x parents]]))}
      x
-     (if (or (not is-expanded) (not ancestors-expanded))
-       [:span {:dangerouslySetInnerHTML {:__html "&nbsp;&hellip;"}}]
-       [:button.delete {:class (when (or (not is-expanded) (not ancestors-expanded))
-                                 "is-hidden")}])]))
-
-(defn external-code-link [usage]
-  (let [key (usage-key usage)
-        location (:location (get parents key))]
-    (when location
-      [:a.tag.is-link {:href location} location])))
+     (if (and is-expanded ancestors-expanded)
+       [:button.delete]
+       [:span {:dangerouslySetInnerHTML {:__html "&nbsp;&hellip;"}}])]))
 
 (defn highlight-as-clojure [s]
   (-> s
@@ -82,9 +76,9 @@
   ([e]
    (invoke-fetch (.-value (dom/getElement "search-var")) nil e))
   ([symbol arity e]
-   (.preventDefault e)
-   (>evt [::events/fetch-namespaces-usages
-          [symbol arity]])))
+   (let [page-size (<sub [::subs/page-size])]
+     (.preventDefault e)
+     (>evt [::events/fetch-namespaces-usages [symbol arity 0 page-size]]))))
 
 (defn invoke-fetch-with-enter [symbol arity e]
   (when (= (.-code e) "Enter")
@@ -113,6 +107,19 @@
   (>evt [::events/fetch-symbol-counts
          [(.-value (dom/getElement "search-var"))]]))
 
+(defn pagination []
+  (let [symbol (<sub [::subs/symbol])
+        arity (<sub [::subs/arity])
+        page (<sub [::subs/page])
+        page-count (<sub [::subs/page-count])
+        page-size (<sub [::subs/page-size])]
+    (when (pos? page-count)
+      [kondoq.pagination/pagination
+       page
+       page-count
+       (fn [page] (>evt [::events/fetch-namespaces-usages
+                         [symbol arity page page-size]]))])))
+
 (defn search-panel [is-active]
   [:div {:class (when-not is-active "is-hidden")}
    [:form {:on-submit invoke-fetch} ; handle <enter> key in form field
@@ -128,7 +135,7 @@
      [:div.control
       [:div.button.is-primary {:on-click invoke-fetch}
        "Search"]]]
-    [:p.help "Type three or more characters of a var for a list of matches,"
+    [:p.help "Type two or more characters of a var for a list of matches,"
      " selectable using the mouse or <TAB>."]]
 
    ;; type-ahead table
@@ -146,13 +153,19 @@
    ;; results
    [:div.mt-6
     (if-let [symbol (<sub [::subs/symbol])]
-      [:h2.subtitle "Results for '" symbol "' "
-       (let [arity (<sub [::subs/arity])]
+      (let [usages-count (<sub [::subs/usages-count])
+            arity (<sub [::subs/arity])]
+        [:h2.subtitle
+         [:span.has-text-weight-bold usages-count]
+         " usages of "
+         [:span.has-text-weight-bold symbol]
+         " "
          (condp = arity
            nil "(arity n/a)"
            -1 "(all arities)"
-           (str "(arity " arity ")")))]
+           (str "(arity " arity ")"))])
       [:h2.subtitle "no current search, type a query"])
+    [pagination]
     [:table.table
      [:thead
       [:tr
@@ -160,7 +173,8 @@
        [:th "Namespace"]
        [:th "Usages"]]]
      [:tbody
-      (map usages-row (<sub [::subs/usages-rows]) (range))]]]])
+      (map usages-row (<sub [::subs/usages-rows]) (range))]]
+    [pagination]]])
 
 (defn switch-to-panel [panel e]
   (.preventDefault e)

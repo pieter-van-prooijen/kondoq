@@ -135,7 +135,6 @@
                         (sql-h/upsert (-> (sql-h/on-conflict)
                                           (sql-h/do-nothing)))
                         (sql/format {:pretty true}))
-                _ (println sql)
                 _ (jdbc/execute! db sql)
                 sql (-> (sql-h/insert-into :contexts)
                         (sql-h/values [{:ns (str used-in-ns)
@@ -154,7 +153,7 @@
      [:= :u.symbol :?symbol]
      [:= :u.arity arity]]))
 
-(defn search-usages [db fq-symbol-name arity]
+(defn search-usages [db fq-symbol-name arity page page-size]
   (let [sql (sql/format {:select-distinct [[:u.symbol :symbol]
                                            [:u.arity :arity]
                                            [:u.used-in-ns :used-in-ns]
@@ -177,12 +176,25 @@
                                       [:and
                                        [:= :u.used-in-ns :mc.ns]
                                        [:= false :mc.single-line]
-                                       [:= :u.start-context :mc.start-context]]]}
+                                       [:= :u.start-context :mc.start-context]]]
+                         :offset (* page page-size)
+                         :limit page-size}
                         {:params {:symbol fq-symbol-name
                                   :arity arity}
                          :pretty true})]
-    (def --sql sql)
     (jdbc-sql/query db sql)))
+
+(defn search-usages-count [db fq-symbol-name arity]
+  (let [sql (sql/format {:select [[[:count :*] :count]]
+                         :from [[:var-usages :u]]
+                         :where (symbol-arity-where-clause arity)}
+                        {:params {:symbol fq-symbol-name
+                                  :arity arity}
+                         :pretty true})]
+    (->> sql
+         (jdbc-sql/query db)
+         first
+         :count)))
 
 (defn search-namespaces [db fq-symbol-name arity]
   (let [sql (sql/format
@@ -243,19 +255,24 @@
                              symbols))
                      symbols))))))
 
-(defn fetch-projects-namespaces-usages [db fq-symbol-name arity]
-  (let [usages (->> (search-usages db fq-symbol-name arity)
+(defn fetch-projects-namespaces-usages [db fq-symbol-name arity page page-size]
+  (let [usages (->> (search-usages db fq-symbol-name arity page page-size)
                     (remove #(nil? (:symbol %))) ; result with nils caused by filter clauses?
                     (map (fn [o] (-> o
                                      (update :symbol symbol)
                                      (update :used-in-ns symbol)))))
+        usages-count (search-usages-count db fq-symbol-name arity)
+        ;; TODO: replace with ony the namespaces of the current page
         namespaces (->> (search-namespaces db fq-symbol-name arity)
                         (map (fn [ns] (-> ns
                                           (update :ns symbol)))))
         projects (search-projects db)]
     {:projects projects
      :namespaces namespaces
-     :usages usages}))
+     :usages usages
+     :usages-count usages-count
+     :page page
+     :page-size page-size}))
 
 (comment
 
@@ -263,8 +280,10 @@
 
   (db)
   (search-symbol-counts (db) "%defn%" 10)
-  (search-usages  (db) "cljs.core/inc" -1)
+  (search-usages  (db) "cljs.core/inc" -1 0 10)
+  (search-usages-count  (db) "cljs.core/defn" -1)
   (time (search-namespaces (db) "clojure.core/defn" "-1"))
+
   
   --sql
   (schema-exists (db))

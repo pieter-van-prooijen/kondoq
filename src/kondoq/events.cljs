@@ -11,7 +11,7 @@
             ;; just fetch the projects, no query
             {:db {:active-panel :search
                   :expanded #{}}
-             :dispatch [::fetch-namespaces-usages "" nil]}))
+             :dispatch [::fetch-namespaces-usages ["" -1 0 20]]}))
 
 ;; when clicking on an item, automatically expand all its items to the left
 (defn expand-ancestors [k parents expanded]
@@ -46,14 +46,19 @@
                (clj->js (merge {:accept "application/edn"} headers)))))
 
 
+;; page is zero based
 (re-frame/reg-event-fx
  ::fetch-namespaces-usages
- (fn-traced [{:keys [db]} [_ [fq-symbol-name arity]]]
+ (fn-traced [{:keys [db]} [_ [fq-symbol-name arity page page-size]]]
             {:http [(-> "/usages"
                         (goog.uri.utils/appendParam "fq-symbol-name"
                                                     fq-symbol-name)
                         (goog.uri.utils/appendParam "arity"
-                                                    arity))
+                                                    arity)
+                        (goog.uri.utils/appendParam "page"
+                                                    page)
+                        (goog.uri.utils/appendParam "page-size"
+                                                    page-size))
                     ::process-fetch-namespaces-usages]
              :db (-> db
                      (assoc :symbol fq-symbol-name)
@@ -62,12 +67,17 @@
 (re-frame/reg-event-db
  ::process-fetch-namespaces-usages
  (fn-traced [db [_ response-body]]
-            (let [{:keys [projects namespaces usages]} (read-string response-body)]
+            (let [{:keys [projects namespaces usages usages-count page page-size]}
+                  (read-string response-body)]
               (-> db
+                  (assoc :projects projects)
                   (assoc :namespaces namespaces)
                   (assoc :usages usages)
-                  (assoc :projects projects)
-                  (assoc :symbol-counts [])))))
+                  (assoc :usages-count usages-count)
+                  (assoc :page page)
+                  (assoc :page-size page-size)
+                  (assoc :symbol-counts [])
+                  (assoc :expanded #{})))))
 
 (re-frame/reg-event-fx
  ::fetch-symbol-counts

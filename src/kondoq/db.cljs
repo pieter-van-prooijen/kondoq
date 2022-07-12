@@ -32,6 +32,8 @@
    ;; projects tab state
    :projects-state :showing-projects
    :current-project {}
+
+   :page-size 20
    })
 
 

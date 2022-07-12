@@ -49,7 +49,7 @@
 (t/use-fixtures :each tu/database-fixture)
 
 (defn poll-for-usages [n]
-  (let [usages (db/search-usages *db* "clojure.core/defn" nil)]
+  (let [usages (db/search-usages *db* "clojure.core/defn" -1 0 10)]
     (if (> (count usages) 0)
       true
       (if (= n 0)
@@ -59,7 +59,7 @@
           (recur (dec n)))))))
 
 (defn poll-for-no-usages [n]
-  (let [usages (db/search-usages *db* "clojure.core/defn" nil)]
+  (let [usages (db/search-usages *db* "clojure.core/defn" -1 0 10)]
     (if (= (count usages) 0)
       true
       (if (= n 0)

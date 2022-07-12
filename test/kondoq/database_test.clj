@@ -31,7 +31,7 @@
                               "\n"))
         _ (db/insert-project *db* "test-project" "http://example.com")
         _ (db/insert-path *db* "test-project" filename "http://example.com/kondoq-test.clj")
-        [usage-1 usage-2] (db/search-usages *db* "clojure.core/inc" 1)]
+        [usage-1 usage-2] (db/search-usages *db* "clojure.core/inc" 1 0 10)]
     (is (= 3 (:start-context usage-1)))
     (is (= "  (inc 1)" (:line usage-1)))
     (is (= context-foo (:context usage-1)))

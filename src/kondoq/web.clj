@@ -46,13 +46,18 @@
   (.join server)
   (log/info "stopped jetty server" server))
 
+(defn coerce-param [x default convert]
+  (if (string/blank? x)
+    default
+    (convert x))
+  )
 (defn fetch-projects-namespaces-usages-handler [{:keys [db params]}]
-  (let [{:keys [fq-symbol-name arity]} params
+  (let [{:keys [fq-symbol-name arity page page-size]} params
         body (db/fetch-projects-namespaces-usages db
                                                   fq-symbol-name
-                                                  (if (string/blank? arity)
-                                                    nil
-                                                    (parse-long arity)))]
+                                                  (coerce-param arity nil parse-long)
+                                                  (coerce-param page 0 parse-long)
+                                                  (coerce-param page-size 10 parse-long))]
     (-> body
         pr-str
         resp/response
@@ -127,7 +132,7 @@
   (h {:request-method :get :uri "/symbol-counts"})
   (h )
 
-  
+  (string/blank? nil)
   (require 'clj-http.client)
   (clj-http.client/get "http://localhost:8280/usages?fq-symbol-name&arity")
   (fetch-projects-namespaces-usages-handler {:params {:fq-symbol-name "clojure.core/inc"

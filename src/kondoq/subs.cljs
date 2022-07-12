@@ -1,5 +1,6 @@
 (ns kondoq.subs
   (:require
+   [cljs.math :as math]
    [kondoq.util :refer [usage-key]]
    [re-frame.core :refer [reg-sub]]))
 
@@ -54,9 +55,10 @@
           (update :usages (partial add-to-last-coll [updated-usage 1]))
           ;; skip any project or namespace in the next iteration
           (update :skip (fn [skip] (reduce (fn [r x]
-                                             (if (not (expanded x))
-                                               (conj r x)
-                                               r))
+                                             ;; FIXME: always expands with paging for now
+                                             (if false #_(not (expanded x))
+                                                 (conj r x)
+                                                 r))
                                            skip
                                            [current-project current-namespace])))))))
 
@@ -84,6 +86,11 @@
  ::usages
  (fn [db _]
    (:usages db)))
+
+(reg-sub
+ ::usages-count
+ (fn [db _]
+   (:usages-count db 0)))
 
 (reg-sub
  ::symbol
@@ -156,6 +163,25 @@
    (:active-panel db)))
 
 ;;
+;; Pagination
+(reg-sub
+ ::page
+ (fn [db _]
+   (:page db 0)))
+
+(reg-sub
+ ::page-size
+ (fn [db _]
+   (:page-size db 20)))
+
+(reg-sub
+ ::page-count
+ :<- [::usages-count]
+ :<- [::page-size]
+ (fn [[usages-count page-size] _]
+   (math/ceil (/ usages-count page-size))))
+
+;;
 ;; Projects tab subs
 
 (reg-sub
@@ -175,6 +201,7 @@
 
   (add-count-to-last-coll [])
 
+  (math/ceil 0.0)
 
   (usages-as-rows #{"re-frame"} (:namespaces kondoq.db/default-db) (:usages kondoq.db/default-db))
 
