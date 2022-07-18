@@ -25,18 +25,21 @@
 (defn add-new-coll [x colls]
   (concat colls [[x]]))
 
-;; update the collection under key for the given value change
-(defn update-colls [result key last-value current-value]
+;; update the collection under key in result for the given value change
+(defn update-coll-under-key [m key last-value current-value]
   (if (or (nil? last-value) (= last-value current-value))
-    (update result key (partial add-to-last-coll current-value))
-    (-> result
+    (update m key (partial add-to-last-coll current-value))
+    (-> m
         (update key add-count-to-last-coll)
         (update key (partial add-new-coll current-value)))))
 
-(defn add-usage [expanded
-                 indexed-namespaces
-                 {:keys [projects namespaces skip] :as result}
-                 usage]
+(defn usage-location [usage namespace-location]
+  (str namespace-location "#L" (:line-no usage)))
+
+(defn add-usage [{:keys [projects namespaces skip] :as result}
+                 usage
+                 expanded
+                 indexed-namespaces]
   (let [last-project (first (last projects))
         last-namespace (first (last namespaces))
         current-namespace (:used-in-ns usage)
@@ -45,20 +48,20 @@
                                 (str current-namespace "-UNKNOWN"))
         current-location (get-in indexed-namespaces [current-namespace :location])
         ;; add the location to the usage to construct the source file link
-        updated-usage (assoc usage :location current-location)]
+        updated-usage (assoc usage :location
+                             (usage-location usage current-location))]
 
     (if (or (skip current-project) (skip current-namespace))
       result
       (-> result
-          (update-colls :projects last-project current-project)
-          (update-colls :namespaces last-namespace current-namespace)
+          (update-coll-under-key :projects last-project current-project)
+          (update-coll-under-key :namespaces last-namespace current-namespace)
           (update :usages (partial add-to-last-coll [updated-usage 1]))
-          ;; skip any project or namespace in the next iteration
+          ;; skip any not-expanded project or namespace in the next iteration
           (update :skip (fn [skip] (reduce (fn [r x]
-                                             ;; FIXME: always expands with paging for now
-                                             (if false #_(not (expanded x))
-                                                 (conj r x)
-                                                 r))
+                                             (if-not (expanded x)
+                                               (conj r x)
+                                               r))
                                            skip
                                            [current-project current-namespace])))))))
 
@@ -70,8 +73,9 @@
 ;;  [nil
 ;;   nil
 ;;   [{:symbol inc, :ns re-frame.core, :line-no 43, :line "(inc y)"} 1]])
+;;
 (defn usages-as-rows [expanded indexed-namespaces usages]
-  (-> (reduce (partial add-usage expanded indexed-namespaces)
+  (-> (reduce (fn [r usage] (add-usage r usage expanded indexed-namespaces))
               {:projects [] :namespaces [] :usages [] :skip #{}}
               usages)
       (update :projects add-count-to-last-coll)

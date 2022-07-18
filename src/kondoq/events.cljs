@@ -3,15 +3,15 @@
             [day8.re-frame.tracing :refer-macros [fn-traced]]
             [goog.net.XhrIo :as xhrio]
             [goog.uri.utils]
+            [kondoq.project-events :as project-events]
             [re-frame.core :as re-frame]))
 
 (re-frame/reg-event-fx
  ::initialize-db
  (fn-traced [_ _]
-            ;; just fetch the projects, no query
             {:db {:active-panel :search
                   :expanded #{}}
-             :dispatch [::fetch-namespaces-usages ["" -1 0 20]]}))
+             :dispatch [::project-events/fetch-projects]}))
 
 ;; when clicking on an item, automatically expand all its items to the left
 (defn expand-ancestors [k parents expanded]
@@ -45,7 +45,6 @@
                body
                (clj->js (merge {:accept "application/edn"} headers)))))
 
-
 ;; page is zero based
 (re-frame/reg-event-fx
  ::fetch-namespaces-usages
@@ -67,17 +66,19 @@
 (re-frame/reg-event-db
  ::process-fetch-namespaces-usages
  (fn-traced [db [_ response-body]]
-            (let [{:keys [projects namespaces usages usages-count page page-size]}
+            (let [{:keys [namespaces usages usages-count page page-size]}
                   (read-string response-body)]
               (-> db
-                  (assoc :projects projects)
                   (assoc :namespaces namespaces)
                   (assoc :usages usages)
                   (assoc :usages-count usages-count)
                   (assoc :page page)
                   (assoc :page-size page-size)
                   (assoc :symbol-counts [])
-                  (assoc :expanded #{})))))
+                  ;; when paging, all namespaces and projects are expanded
+                  (assoc :expanded (-> #{}
+                                       (into (map :project namespaces))
+                                       (into (map :ns namespaces))))))))
 
 (re-frame/reg-event-fx
  ::fetch-symbol-counts

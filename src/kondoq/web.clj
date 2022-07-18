@@ -10,7 +10,8 @@
             [ring.middleware.keyword-params :as keyword-params]
             [ring.middleware.params :as params]
             [ring.middleware.resource :as resource]
-            [ring.util.response :as resp]))
+            [ring.util.response :as resp]
+            [clojure.edn :as edn]))
 
 (def config {:adapter/jetty {:port 3002
                              :db (ig/ref :kondoq/db)
@@ -51,13 +52,20 @@
     default
     (convert x))
   )
-(defn fetch-projects-namespaces-usages-handler [{:keys [db params]}]
+(defn fetch-namespaces-usages-handler [{:keys [db params]}]
   (let [{:keys [fq-symbol-name arity page page-size]} params
-        body (db/fetch-projects-namespaces-usages db
-                                                  fq-symbol-name
-                                                  (coerce-param arity nil parse-long)
-                                                  (coerce-param page 0 parse-long)
-                                                  (coerce-param page-size 10 parse-long))]
+        body (db/fetch-namespaces-usages db
+                                         fq-symbol-name
+                                         (coerce-param arity nil parse-long)
+                                         (coerce-param page 0 parse-long)
+                                         (coerce-param page-size 10 parse-long))]
+    (-> body
+        pr-str
+        resp/response
+        (resp/content-type "application/edn"))))
+
+(defn fetch-projects-handler [{:keys [db]}]
+  (let [body (db/search-projects db)]
     (-> body
         pr-str
         resp/response
@@ -113,9 +121,10 @@
 
 (defn create-handler []
   (let [router (rring/router
-                [["/usages" fetch-projects-namespaces-usages-handler]
+                [["/usages" fetch-namespaces-usages-handler]
                  ["/symbol-counts" fetch-symbol-counts-handler]
-                 ["/projects/:project-url" {:name :projects ; name is required?
+                 ["/projects" fetch-projects-handler]
+                 ["/projects/:project-url" {:name :project-crud ; name is required?
                                             :get get-project-status-handler
                                             :put add-project-handler
                                             :delete delete-project-handler}]
@@ -135,7 +144,14 @@
   (string/blank? nil)
   (require 'clj-http.client)
   (clj-http.client/get "http://localhost:8280/usages?fq-symbol-name&arity")
-  (fetch-projects-namespaces-usages-handler {:params {:fq-symbol-name "clojure.core/inc"
-                                                      :arity "-1"}
-                                             :db (db)})
+  (fetch-namespaces-usages-handler {:params {:fq-symbol-name "clojure.core/inc"
+                                             :arity "-1"}
+                                    :db (db)})
+
+  (-> (clj-http.client/get "http://localhost:8280/projects")
+      #_(fetch-projects-handler {:db (db)})
+      :body
+      edn/read-string)
+  (clj-http.client/get "http://localhost:8280/projects")
+
   )

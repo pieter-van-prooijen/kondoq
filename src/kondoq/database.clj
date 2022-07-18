@@ -210,18 +210,17 @@
     (jdbc-sql/query db sql)))
 
 (defn search-projects [db]
-(let [sql (sql/format
-           {:select-distinct [[:p.project :project]
-                              [:p.location :location]
-                              [[:over [[:count :*]
-                                       {:partition-by [:n.project]}
-                                       :ns-count]]]]
-            :from [[:projects :p]]
-            :inner-join [[:namespaces :n] [:= :p.project :n.project]]
-            :order-by [:project]}
-           {:pretty true})]
-  (jdbc-sql/query db sql))
-  )
+  (let [sql (sql/format
+             {:select-distinct [[:p.project :project]
+                                [:p.location :location]
+                                [[:over [[:count :*]
+                                         {:partition-by [:n.project]}
+                                         :ns-count]]]]
+              :from [[:projects :p]]
+              :inner-join [[:namespaces :n] [:= :p.project :n.project]]
+              :order-by [:project]}
+             {:pretty true})]
+    (jdbc-sql/query db sql)))
 
 ;;See https://cljdoc.org/d/com.github.seancorfield/honeysql/2.2.891/doc/getting-started/sql-clause-reference#window-partition-by-and-over for the windowing functions
 (defn search-symbol-counts [db q limit]
@@ -255,20 +254,18 @@
                              symbols))
                      symbols))))))
 
-(defn fetch-projects-namespaces-usages [db fq-symbol-name arity page page-size]
+(defn fetch-namespaces-usages [db fq-symbol-name arity page page-size]
   (let [usages (->> (search-usages db fq-symbol-name arity page page-size)
                     (remove #(nil? (:symbol %))) ; result with nils caused by filter clauses?
-                    (map (fn [o] (-> o
+                    (map (fn [u] (-> u
                                      (update :symbol symbol)
                                      (update :used-in-ns symbol)))))
+        used-in-namespaces (into #{} (map :used-in-ns usages))
         usages-count (search-usages-count db fq-symbol-name arity)
-        ;; TODO: replace with ony the namespaces of the current page
         namespaces (->> (search-namespaces db fq-symbol-name arity)
-                        (map (fn [ns] (-> ns
-                                          (update :ns symbol)))))
-        projects (search-projects db)]
-    {:projects projects
-     :namespaces namespaces
+                        (map (fn [ns] (update ns :ns symbol)))
+                        (filter (fn [ns] (used-in-namespaces (:ns ns)))))]
+    {:namespaces namespaces
      :usages usages
      :usages-count usages-count
      :page page

@@ -2,15 +2,27 @@
   (:require [cljs.reader :refer [read-string]]
             [day8.re-frame.tracing :refer-macros [fn-traced]]
             [goog.uri.utils]
-            [kondoq.events :as events]
             [re-frame.core :as re-frame]))
 
 ;; Adding project states:
 ;; - showing-projects
 ;; - entering-project-url (and a token)
 ;; - adding-project (with feedback about the loaded namespaces etc.)
-;; - error-adding-project (something happened when fetching
+;; - error-adding-project (something happened when fetching)
 ;;
+
+;; Fetch a list of all the projects
+(re-frame/reg-event-fx
+ ::fetch-projects
+ (fn-traced [_ [_ _]]
+            {:http ["/projects"
+                    ::process-fetch-projects]}))
+
+(re-frame/reg-event-db
+ ::process-fetch-projects
+ (fn-traced [db [_ response-body]]
+            (let [projects (read-string response-body)]
+              (assoc db :projects projects))))
 
 ;; Generic cancel event, dispatches to the correct one depending on the state
 (re-frame/reg-event-fx
@@ -61,7 +73,7 @@
  (fn-traced [{:keys [db]} [_ _]]
             {:db (assoc db :projects-state :showing-projects
                         :current-project {})
-             :dispatch [::events/fetch-namespaces-usages ""]}))
+             :dispatch [::fetch-projects]}))
 
 (re-frame/reg-event-fx
  ::fetch-project
@@ -83,7 +95,7 @@
     (or (empty? project) (= ns-total ns-count))
     {:db (assoc db :projects-state :showing-projects
                 :current-project {})
-     :dispatch [::events/fetch-namespaces-usages ""]} ; reload projects
+     :dispatch [::fetch-projects]}
     :else
     {:db (assoc db :projects-state :adding-project
                 :current-project project)
@@ -100,7 +112,7 @@
  (fn-traced [{:keys [_]} [_ location]]
             {:http [(-> "projects"
                         (goog.uri.utils/appendPath (js/encodeURIComponent location)))
-                    [::events/fetch-namespaces-usages ""]
+                    [::fetch-projects]
                     "DELETE"]}))
 
 (comment

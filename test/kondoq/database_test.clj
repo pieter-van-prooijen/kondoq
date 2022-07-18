@@ -46,7 +46,7 @@
         _ (spit filename (str "(ns test-project)\n\n" context "\n"))
         _ (db/insert-project *db* "test-project" "http://example.com")
         _ (db/insert-path *db* "test-project" filename "http://example.com/kondoq-test.clj")
-        {:keys [_ _ usages]} (db/fetch-projects-namespaces-usages *db* "" -1)]
+        {:keys [_ _ usages]} (db/fetch-namespaces-usages *db* "" -1 0 10)]
     (is (empty? usages))
     (.delete (java.io.File. filename))))
 

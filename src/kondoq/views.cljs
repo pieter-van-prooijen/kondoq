@@ -56,8 +56,7 @@
                         (>evt [::events/toggle-expanded [key parents]]))}
       [code-fragment line context is-collapsed start-context line-no]]
      (when-not is-collapsed
-       (let [href (str location "#L" line-no)]
-         [:a.tag.is-link {:href href :target "_blank"} location]))]))
+       [:a.tag.is-link {:href location :target "_blank"} location])]))
 
 (defn usages-row [row idx]
   (let [[[project project-rs] [namespace namespace-rs] [usage _]] row]
@@ -130,7 +129,7 @@
                      :type "text"
                      :placeholder "search for var..."
                      :autoComplete "off"
-                     :on-change fetch-symbol-counts
+                     :on-change fetch-symbol-counts ;; FIXME: too slow sometimes, skips change events?
                      :on-focus fetch-symbol-counts}]]
      [:div.control
       [:div.button.is-primary {:on-click invoke-fetch}
@@ -186,7 +185,8 @@
    label])
 
 (defn main-panel []
-  (let [active-panel (<sub [::subs/active-panel])]
+  (let [active-panel (<sub [::subs/active-panel])
+        projects-count (count (<sub [::subs/projects]))]
     [:div.container
      [:nav.navbar
       [:div.navbar-brand
@@ -195,7 +195,8 @@
       [:div.navbar-menu
        [:div.navbar-start
         ^{:key :search} [panel-navbar-item :search active-panel "Search"]
-        ^{:key :projects} [panel-navbar-item :projects active-panel "Projects"]]]]
+        ^{:key :projects} [panel-navbar-item :projects active-panel
+                           (str "Projects (" projects-count ")")]]]]
      [search-panel (= active-panel :search)]
      [project-views/projects-panel (= active-panel :projects)]]))
 

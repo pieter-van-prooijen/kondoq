@@ -1,8 +1,5 @@
 ;; build the uberjar using 'clj -T:build uber'
 ;; invoke with 'java -jar target/kondoq-<version>-standalone.jar'
-;; TODO:
-;; - only include the production build javascript
-;; - include minified highlight.js and bulma css files
 ;;
 (ns build
   (:require [clojure.tools.build.api :as b]))

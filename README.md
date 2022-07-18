@@ -41,6 +41,17 @@ Visit http://localhost:3002/index.html
 Add a github project via the projects tab and search using the search tab. After typing three characters a popup
 list appears with potential matches, selectable by mouse.
 
+## Production Build / Install
+
+
+Make the uber jar (from the build.clj), will also create the production javascript:
+```sh
+$ clj -T:build uber
+```
+
+Copy the jar to the server, clean the database if a schema change happened
+
+
 
 ### Project Overview
 
