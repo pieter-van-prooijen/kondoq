@@ -4,6 +4,9 @@ A [re-frame](https://github.com/day8/re-frame) / Integrant / jdbc-next applicati
 show var usages in public clojure-(script) projects.
 
 TODO:
+- security: dangeriously set html in code/error messages. Upload project with malicious javascript?
+  highlight.js should guard against this?
+
 - production: logging, prod build, deploy to external server (build scripts), *in*
 - more tests
   deploy to pcextreme, lets encrypt? *in*

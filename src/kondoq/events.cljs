@@ -38,12 +38,31 @@
                (fn [ev]
                  (let [^XMLHttpRequest target (.-target ev)
                        response (.getResponseText target)]
-                   (if (coll? success-event-or-tupple)
-                     (re-frame/dispatch success-event-or-tupple)
-                     (re-frame/dispatch [success-event-or-tupple response]))))
+                   (if (.isSuccess target)
+                     (do
+                       (if (coll? success-event-or-tupple)
+                         (re-frame/dispatch success-event-or-tupple)
+                         (re-frame/dispatch [success-event-or-tupple response]))
+                       (re-frame/dispatch [::clear-http-failure]))
+                     (re-frame/dispatch [::register-http-failure
+                                         {:last-error-code (.getLastErrorCode target)
+                                          :status (.getStatus target)
+                                          :status-text (.getStatusText target)
+                                          :response response
+                                          :content-type (.getResponseHeader target "Content-Type")}]))))
                (or method "GET")
                body
                (clj->js (merge {:accept "application/edn"} headers)))))
+
+(re-frame/reg-event-db
+ ::clear-http-failure
+ (fn-traced [db _]
+            (dissoc db :http-failure)))
+
+(re-frame/reg-event-db
+ ::register-http-failure
+ (fn-traced [db [_ http-failure]]
+            (assoc db :http-failure http-failure)))
 
 ;; page is zero based
 (re-frame/reg-event-fx

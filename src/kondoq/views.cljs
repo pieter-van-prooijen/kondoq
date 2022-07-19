@@ -184,10 +184,24 @@
                    :on-click (partial switch-to-panel panel)}
    label])
 
+(defn error-message []
+  (let [{:keys [last-error-code status status-text response content-type]}
+        (<sub [::subs/http-failure])]
+    [:article.message.is-danger {:class (when-not last-error-code "is-hidden")}
+     [:div
+      [:h1.title.is-4 "Error"]
+      [:p "Error type: " last-error-code " (" ({6 "HTTP" 8 "Timeout"} last-error-code "unknown") ")"]
+      [:p "HTTP status code: " status]
+      [:p "HTTP status text: " status-text]
+      (when (and response (= content-type "text/html"))
+        [:div {:dangerouslySetInnerHTML {:__html response}}])
+      ]]))
+
 (defn main-panel []
   (let [active-panel (<sub [::subs/active-panel])
         projects-count (count (<sub [::subs/projects]))]
     [:div.container
+     [error-message]
      [:nav.navbar
       [:div.navbar-brand
        [:div.navbar-item

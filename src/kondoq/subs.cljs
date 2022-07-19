@@ -203,6 +203,13 @@
  (fn [db _]
    (:current-project db {})))
 
+;;
+;; Last seen http failure
+(reg-sub
+ ::http-failure
+ (fn [db _] 
+   (:http-failure db)))
+
 (comment
   (require 'kondoq.db)
   (add-to-last-coll :a [[:c] [:b]]) ; ([:c] (:b :a))
