@@ -2,7 +2,8 @@
 ;; invoke with 'java -jar target/kondoq-<version>-standalone.jar'
 ;;
 (ns build
-  (:require [clojure.tools.build.api :as b]))
+  (:require [clojure.string :as string]
+            [clojure.tools.build.api :as b]))
 
 (def lib 'kondoq)
 (def version (format "1.0.%s" (b/git-count-revs nil)))
@@ -15,8 +16,19 @@
   ;; remove any shadow-cljs dev build code
   (b/delete {:path "resources/public/js/compiled"}))
 
-(defn uber [_]
+(defn working-tree-clean? []
+  (-> (b/git-process {:git-args "diff --stat HEAD"})
+      (string/split #"\n")
+      count
+      zero?))
+
+(defn uber [{:keys [check-working-tree] :or {check-working-tree true}}]
   (clean nil)
+
+  (when (and check-working-tree (not (working-tree-clean?)))
+    (println "working tree not clean, aborting, skip this check with 'check-working-tree false' as arguments")
+    (System/exit 1))
+
   (b/process {:command-args ["npx" "shadow-cljs" "release" "app"]})
   (b/copy-dir {:src-dirs ["src" "resources"]
                :target-dir class-dir})
@@ -26,4 +38,7 @@
   (b/uber {:class-dir class-dir
            :uber-file uber-file
            :basis basis
-           :main 'kondoq.server}))
+           :main 'kondoq.server
+           :manifest {"Creation-Date" (str (java.time.ZonedDateTime/now java.time.ZoneOffset/UTC))
+                      "Implementation-Version" version
+                      "Git-Commit" (b/git-process {:git-args "rev-parse HEAD"})}}))

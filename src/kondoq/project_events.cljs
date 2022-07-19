@@ -21,8 +21,10 @@
 (re-frame/reg-event-db
  ::process-fetch-projects
  (fn-traced [db [_ response-body]]
-            (let [projects (read-string response-body)]
-              (assoc db :projects projects))))
+            (let [{:keys [projects manifest]} (read-string response-body)]
+              (-> db
+                  (assoc :projects projects)
+                  (assoc :manifest manifest)))))
 
 ;; Generic cancel event, dispatches to the correct one depending on the state
 (re-frame/reg-event-fx

@@ -20,5 +20,8 @@
   (shadow.cljs.devtools.server/start!)
   (shadow.cljs.devtools.server/stop!)
 
+  (.format #_(java.time.ZonedDateTime/now java.time.ZoneOffset/UTC)
+           (java.time.Instant/now)
+           (java.time.format.DateTimeFormatter/ISO_DATE_TIME))
   
   ,)

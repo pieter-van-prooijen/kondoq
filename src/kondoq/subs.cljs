@@ -123,6 +123,11 @@
    (:projects db)))
 
 (reg-sub
+ ::manifest
+ (fn [db _]
+   (:manifest db)))
+
+(reg-sub
  ::expanded
  (fn [db _]
    (:expanded db)))

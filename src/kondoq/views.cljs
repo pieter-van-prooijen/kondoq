@@ -198,5 +198,10 @@
         ^{:key :projects} [panel-navbar-item :projects active-panel
                            (str "Projects (" projects-count ")")]]]]
      [search-panel (= active-panel :search)]
-     [project-views/projects-panel (= active-panel :projects)]]))
+     [project-views/projects-panel (= active-panel :projects)]
+     (let [manifest (<sub [::subs/manifest])]
+       [:div.mt-4
+        [:span.tag "Version: " (get manifest "Implementation-Version" "N/A") ]
+        [:span.tag "Creation-Date: " (get manifest "Creation-Date" "N/A") ]
+        [:span.tag "Git-Commit: " (get manifest "Git-Commit" "N/A") ]])]))
 

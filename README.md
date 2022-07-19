@@ -4,11 +4,13 @@ A [re-frame](https://github.com/day8/re-frame) / Integrant / jdbc-next applicati
 show var usages in public clojure-(script) projects.
 
 TODO:
-- production: logging, prod build, deploy to external server (build scripts), more tests
+- production: logging, prod build, deploy to external server (build scripts), *in*
+- more tests
   deploy to pcextreme, lets encrypt? *in*
-- handle different arities (in type-ahead, allow for all arities as well)
-  distinguish between a specific arity (including zero), all arities and un-used arity (n/a) (e.g. in a higher order function call)
-- paging for large result sets for common vars
+- handle different arities (in type-ahead, allow for all arities as well) *in*
+  distinguish between a specific arity (including zero), all arities and un-used arity (n/a) (e.g. in a higher
+  order function call) *in*
+- paging for large result sets for common vars *in*
 - give preference to "well-known" repositories?
 - 
 - up-to-date sqlite jdbc driver? (support for 3.39, strict tables etc.), perhaps use system installed lib instead

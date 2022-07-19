@@ -11,7 +11,8 @@
             [ring.middleware.params :as params]
             [ring.middleware.resource :as resource]
             [ring.util.response :as resp]
-            [clojure.edn :as edn]))
+            [clojure.edn :as edn]
+            [clojure.java.io :as io]))
 
 (def config {:adapter/jetty {:port 3002
                              :db (ig/ref :kondoq/db)
@@ -64,9 +65,27 @@
         resp/response
         (resp/content-type "application/edn"))))
 
+;; Assumes running from an uberjar with only a single manifest on the classpath
+(defn fetch-uberjar-manifest [ns]
+  (when-let [clazz (try (Class/forName (name ns))
+                        (catch ClassNotFoundException _))]
+    (->> (str "jar:" (-> clazz
+                         .getProtectionDomain
+                         .getCodeSource
+                         .getLocation)
+              "!/META-INF/MANIFEST.MF")
+         io/input-stream
+         java.util.jar.Manifest.
+         .getMainAttributes
+         (map (fn [[k v]] [(str k) v]))
+         (into {}))))
+
+;; projects loads both the project list and the manifest
 (defn fetch-projects-handler [{:keys [db]}]
-  (let [body (db/search-projects db)]
-    (-> body
+  (let [projects (db/search-projects db)
+        manifest (fetch-uberjar-manifest 'kondoq.server)]
+    (-> {:projects projects
+         :manifest manifest}
         pr-str
         resp/response
         (resp/content-type "application/edn"))))
@@ -154,4 +173,7 @@
       edn/read-string)
   (clj-http.client/get "http://localhost:8280/projects")
 
+  (fetch-uberjar-manifest 'kondoq.server)
+  
+  
   )
