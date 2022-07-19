@@ -17,10 +17,9 @@
   (b/delete {:path "resources/public/js/compiled"}))
 
 (defn working-tree-clean? []
+  ;; no output from git gives a nil value
   (-> (b/git-process {:git-args "diff --stat HEAD"})
-      (string/split #"\n")
-      count
-      zero?))
+      nil?))
 
 (defn uber [{:keys [check-working-tree] :or {check-working-tree true}}]
   (clean nil)
