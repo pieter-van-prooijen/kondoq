@@ -21,7 +21,7 @@
 
 ;; some usages don't have a :to entry (e.g. in case of "js/.." vars)
 (defn valid-var-usage? [usage]
-  (every? (partial get usage) [:to :name :from :row]))
+  (every? (partial get usage) [:to :name :from :row :col]))
 
 ;; analyze the source file at path, returning a namespace / usages / source-lines tupple
 (defn analyze [path]
@@ -45,7 +45,7 @@
                       :name)
         usages(->> (:var-usages analysis)
                    (filter valid-var-usage?)
-                   (map (fn [{:keys [:to :name :from :row :arity]}]
+                   (map (fn [{:keys [to name from row col arity]}]
                           (let [[start-context end-context _]
                                 (or (extract-context lines row var-definition-ranges)
                                     (extract-context lines row var-usages-ranges))]
@@ -53,16 +53,18 @@
                              :arity arity
                              :used-in-ns from
                              :line-no row
+                             :column-no col
                              :start-context start-context
-                             :end-context end-context}))))]
+                             :end-context end-context})))
+                   ;; parsing a cljc file will give two entries for each usage,
+                   ;; which are usually the same
+                   (distinct))] 
     [namespace usages lines]))
 
 (comment
 
   (analyze "/home/pieter/projects/Clojure/frontpage/frontpage-re-frame/src/cljs/frontpage_re_frame/handlers/core.cljs")
   (analyze "/home/pieter/projects/Clojure/kafka-streams/src/kafka_streams/aggregate.clj")
-  a
-  u
   (str 'clojure.core/inc)
   (def l(->> "src/kondoq/util.cljs"
              io/file

@@ -4,25 +4,32 @@ A [re-frame](https://github.com/day8/re-frame) / Integrant / jdbc-next applicati
 show var usages in public clojure-(script) projects.
 
 TODO:
-- security: dangeriously set html in code/error messages. Upload project with malicious javascript?
-  highlight.js should guard against this?
+- style guide compliance, consistent naming of "fetch-", "search-" etc.
+- more tests
+- give preference to "well-liked" repositories in results? (e.g. sort by number of github stars)
+- up-to-date sqlite jdbc driver? (support for 3.39, strict tables etc.), perhaps use system installed lib instead
+  of unpacking the one in the jar?
+- split in read/write databases (sqlite: file:bla.sqlite?mode=ro ) for later move to single writer?
+  (note that read-only replicas in litestream are not working and wil be replaced with new implementation)
+- strip leading whitespace when code context is collapsed?
+- put newly added projects on top of the list with "added" date
+
 
 - production: logging, prod build, deploy to external server (build scripts), *in*
-- more tests
   deploy to pcextreme, lets encrypt? *in*
 - handle different arities (in type-ahead, allow for all arities as well) *in*
   distinguish between a specific arity (including zero), all arities and un-used arity (n/a) (e.g. in a higher
   order function call) *in*
 - paging for large result sets for common vars *in*
-- give preference to "well-known" repositories?
 - 
-- up-to-date sqlite jdbc driver? (support for 3.39, strict tables etc.), perhaps use system installed lib instead
-  of unpacking the one in the jar?
-- split in read/write databases (sqlite: file:bla.sqlite?mode=ro ) for later move to single writer?
-  (note that read-only replicas in litestream are not working and wil be replaced)
-- strip leading whitespace when code context is collapsed?
 - delete projects *in*
-- put newly added projects on top with "added" date
+
+BUGS:
+- load integrant, search for integrant.core/ref pagination is not right (multiple usage/single line issue)
+  (and cljc issue? , gives double entries *in*
+- security: dangeriously set html in code/error messages. Upload project with malicious javascript?
+  highlight.js should guard against this? *in*, see hljs.configure()
+
 
 ## Getting Started
 

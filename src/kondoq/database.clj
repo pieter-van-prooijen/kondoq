@@ -53,6 +53,7 @@
                           " arity INTEGER,"
                           " used_in_ns TEXT NOT NULL,"
                           " line_no INTEGER NOT NULL,"
+                          " column_no INTEGER NOT NULL,"
                           " start_context INTEGER,"
                           " end_context INTEGER,"
                           " FOREIGN KEY(used_in_ns) REFERENCES namespaces(ns) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED)")])
@@ -158,6 +159,7 @@
                                            [:u.arity :arity]
                                            [:u.used-in-ns :used-in-ns]
                                            [:u.line-no :line-no]
+                                           [:u.column-no :column-no]
                                            [:sc.source-code :line]
                                            [:u.start-context :start-context]
                                            [:u.end-context :end-context]
@@ -277,8 +279,8 @@
 
   (db)
   (search-symbol-counts (db) "%defn%" 10)
-  (search-usages  (db) "cljs.core/inc" -1 0 10)
-  (search-usages-count  (db) "cljs.core/defn" -1)
+  (count (search-usages  (db) "integrant.core/ref" nil 0 100))
+  (search-usages-count  (db) "integrant.core/ref" nil)
   (time (search-namespaces (db) "clojure.core/defn" "-1"))
 
   

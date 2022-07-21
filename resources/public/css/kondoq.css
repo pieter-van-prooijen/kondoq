@@ -4,7 +4,7 @@ pre.single-line {
 }
 
 pre code span.current-line {
-    background-color: rgba(100, 255, 100, 0.08)
+    background-color: rgba(100, 255, 100, 0.20)
 }
 
 pre code span.line-number {

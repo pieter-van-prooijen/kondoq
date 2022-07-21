@@ -19,6 +19,8 @@
 
 ;; configured in shadow-cljs in :builds/:app/:modules/:app/:init-fn
 (defn init []
+  ;; configure highlight.js to detect malicious code blocks
+  (js/hljs.configure #js {:throwUnescapedHTML true})
   (re-frame/dispatch-sync [::events/initialize-db])
   (dev-setup)
   (mount-root))
