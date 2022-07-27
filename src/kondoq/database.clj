@@ -101,9 +101,11 @@
                         {:params {:location location}})
         _ (jdbc/execute! db sql)]))
 
-;; inclusive range, 1- based (as is clj-kondo)
-(defn extract-lines [lines from to]
-  (->> lines
+(defn- source-lines-as-string
+  "Return the source code from a sequence of `source-lines` starting at `from` up to
+  and including `to` as a single string."
+  [source-lines from to]
+  (->> source-lines
        (drop (dec from))
        (take (inc (- to from)))
        (string/join "\n")))
@@ -132,7 +134,10 @@
                         (sql-h/values [{:ns (str used-in-ns)
                                         :start-context start-context
                                         :single-line false
-                                        :source_code (extract-lines source-lines start-context end-context)}])
+                                        :source_code (source-lines-as-string
+                                                      source-lines
+                                                      start-context
+                                                      end-context)}])
                         (sql-h/upsert (-> (sql-h/on-conflict)
                                           (sql-h/do-nothing)))
                         (sql/format {:pretty true}))
@@ -141,7 +146,10 @@
                         (sql-h/values [{:ns (str used-in-ns)
                                         :start-context line-no
                                         :single-line true
-                                        :source_code (extract-lines source-lines line-no line-no)}])
+                                        :source_code (source-lines-as-string
+                                                      source-lines
+                                                      line-no
+                                                      line-no)}])
                         (sql-h/upsert (-> (sql-h/on-conflict)
                                           (sql-h/do-nothing)))
                         (sql/format {:pretty true}))
@@ -236,7 +244,7 @@
                                          {:partition-by [:symbol]}
                                          :all-arities-count]]]]
               :from [:var-usages]
-              :where [:like :symbol :?q]
+              :where [[:like :symbol :?q]]
               :order-by [[:all-arities-count :desc] [:count :desc][:arity :asc]]
               :limit :?limit}
              {:params {:q q
@@ -284,7 +292,7 @@
   (time (search-namespaces (db) "clojure.core/defn" "-1"))
 
   
-  --sql
+  
   (schema-exists (db))
 
   (jdbc/execute! (db) ["pragma cache_size;"])

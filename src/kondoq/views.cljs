@@ -102,9 +102,20 @@
             -1 "(*)"
             (str "(" arity ")"))]]))
 
-(defn fetch-symbol-counts [_]
-  (>evt [::events/fetch-symbol-counts
-         [(.-value (dom/getElement "search-var"))]]))
+(defn symbol-counts-table [symbol-count-q symbol-counts]
+  (when (> (count symbol-counts) 0)
+    [:table.table.is-family-monospace
+     [:thead
+      [:tr
+       [:td "symbol"]
+       [:td "count"]
+       [:td "arity"]]]
+     [:tbody
+      (map (partial symbol-counts-row symbol-count-q) symbol-counts)]]))
+
+(defn fetch-symbol-counts [e]
+  (let [search-for (-> e .-target .-value)]
+    (>evt [::events/fetch-symbol-counts [search-for]])))
 
 (defn pagination []
   (let [symbol (<sub [::subs/symbol])
@@ -129,7 +140,7 @@
                      :type "text"
                      :placeholder "search for var..."
                      :autoComplete "off"
-                     :on-change fetch-symbol-counts ;; FIXME: too slow sometimes, skips change events?
+                     :on-input fetch-symbol-counts
                      :on-focus fetch-symbol-counts}]]
      [:div.control
       [:div.button.is-primary {:on-click invoke-fetch}
@@ -138,16 +149,7 @@
      " selectable using the mouse or <TAB>."]]
 
    ;; type-ahead table
-   (when (> (count (<sub [::subs/symbol-counts])) 1)
-     [:table.table.is-family-monospace
-      [:thead
-       [:tr
-        [:td "symbol"]
-        [:td "count"]
-        [:td "arity"]]]
-      [:tbody
-       (map (partial symbol-counts-row (<sub [::subs/symbol-counts-q]))
-            (<sub [::subs/symbol-counts]))]])
+   [symbol-counts-table (<sub [::subs/symbol-counts-q]) (<sub [::subs/symbol-counts])]
 
    ;; results
    [:div.mt-6

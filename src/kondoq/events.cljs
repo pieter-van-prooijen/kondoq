@@ -103,14 +103,15 @@
  ::fetch-symbol-counts
  (fn-traced [{:keys [db]} [_ [q]]]
             {:http [(goog.uri.utils/appendParam "/symbol-counts" "q" q)
-                    ::process-symbol-counts]
-             :db (assoc db :symbol-counts-q q)}))
+                    ::process-symbol-counts]}))
 
 (re-frame/reg-event-db
  ::process-symbol-counts
  (fn-traced [db [_ response-body]]
-            (let [symbol-counts (read-string response-body)]
-              (assoc db :symbol-counts symbol-counts))))
+            (let [{:keys [symbol-counts-q symbol-counts]} (read-string response-body)]
+              (-> db
+                  (assoc :symbol-counts-q symbol-counts-q)
+                  (assoc :symbol-counts symbol-counts)))))
 
 (re-frame/reg-event-db
  ::set-active-panel

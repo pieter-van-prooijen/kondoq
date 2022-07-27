@@ -92,10 +92,10 @@
 
 (defn fetch-symbol-counts-handler [{:keys [db params]}]
   (let [q (:q params)
-        body (if (>= (count q) 2)
-               (db/search-symbol-counts db (str "%" q "%") 10)
-               [])]
-    (-> body
+        symbol-counts (if (>= (count q) 2)
+                        (db/search-symbol-counts db (str "%" q "%") 10)
+                        [])]
+    (-> {:symbol-counts-q q :symbol-counts symbol-counts}
         pr-str
         resp/response
         (resp/content-type "application/edn"))))

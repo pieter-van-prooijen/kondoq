@@ -40,13 +40,26 @@
     (is (= context-bar (:context usage-2)))
     (.delete (java.io.File. filename))))
 
-(deftest fetch-usages-with-empty-string
+;; returns the filenmae to be deleted by the test itself
+(defn- insert-test-project []
   (let [filename "/tmp/kondoq-test.clj"
-        context "(defn foo []\n  (inc 1)\n(dec 2))"
-        _ (spit filename (str "(ns test-project)\n\n" context "\n"))
-        _ (db/insert-project *db* "test-project" "http://example.com")
-        _ (db/insert-path *db* "test-project" filename "http://example.com/kondoq-test.clj")
+        context "(defn foo []\n  (inc 1)\n(dec 2))"]
+    (spit filename (str "(ns test-project)\n\n" context "\n"))
+    (db/insert-project *db* "test-project" "http://example.com")
+    (db/insert-path *db* "test-project" filename "http://example.com/kondoq-test.clj")
+    filename))
+
+(deftest fetch-usages-with-empty-string
+  (let [filename (insert-test-project)
         {:keys [_ _ usages]} (db/fetch-namespaces-usages *db* "" -1 0 10)]
     (is (empty? usages))
     (.delete (java.io.File. filename))))
 
+;; doesn't work yet, now way to specify "escape" after a like clause in honeysql
+(deftest escape-like-pattern-characters
+  (let [filename (insert-test-project)
+        symbol-counts (db/search-symbol-counts *db* "%dec%" 10)
+        _ (is (= 1 (count symbol-counts)))
+        symbol-counts (db/search-symbol-counts *db* "%d%ec%" 10)
+        _ (is (= 1 (count symbol-counts)))] ;; should be zero matches
+    (.delete (java.io.File. filename))))

@@ -32,7 +32,6 @@
              :encoding "base64"}})
 
 (defn mocked-fetch-github-resource [_ url _]
-  ;; condp invokes predicate with (pred clause x)
   (condp (fn [substr s] (string/includes? s substr)) url
     "/git/trees/master" source-files
     ".clj" (if *slow*
