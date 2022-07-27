@@ -31,7 +31,7 @@
         vec)))
 
 (defn analyze
-  "Analyze the source file at `path` using clj-kondo, returning a tupple of
+  "Analyze the source file at `path` using clj-kondo, returning a map of
   [namespace, usages, source-lines].
   Assumes one namespace per file."
   [path]
@@ -66,7 +66,7 @@
                    ;; Parsing a .cljc file will give two entries for each usage,
                    ;; which are usually the same for non-core vars.
                    (distinct))]
-    [namespace usages source-lines]))
+    {:namespace namespace :usages usages :source-lines source-lines}))
 
 (comment
 

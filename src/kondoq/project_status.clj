@@ -1,8 +1,7 @@
-(ns kondoq.project-status)
+(ns kondoq.project-status
+  "Manage temporary project status properties, while a project is being added.
+  In memory, works because of single writer.")
 
-;;
-;; Temporary project status properties while they are being added.
-;; In *memory*, works because of single-writer
 (def current-projects (atom {}))
 
 (defn init-project-status [location project-future]

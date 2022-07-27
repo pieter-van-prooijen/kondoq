@@ -1,14 +1,13 @@
 (ns kondoq.etag
+  "Cache database which maps a url to an etag + response body to minimize requests to
+  the GitHub API, as etag hits do not count toward your request limit.
+  Uses a separate database to keep the main code database clean. No eviction policy has
+  been implemented yet."
   (:require [honey.sql :as sql]
             [honey.sql.helpers :as sql-h]
             [integrant.core :as ig]
             [next.jdbc :as jdbc]
             [next.jdbc.sql :as jdbc-sql]))
-
-;; Cache db which maps urls to etag/response bodies to minimize requests to
-;; github. Etag hits do not count toward the request limit.
-;; Separate db to keep the main code database clean.
-;; TODO: ttl to remove obsolete urls, perhaps replace with ehache ?
 
 (def config
   {:kondoq/etag-db {:dbtype "sqlite"

@@ -5,7 +5,7 @@
             [clojure.string :as string]
             [clojure.tools.logging :as log]
             [jsonista.core :as json]
-            [kondoq.analysis]
+            [kondoq.analysis :as analysis]
             [kondoq.database :as db]
             [kondoq.etag :refer [get-etag-body insert-etag-body]]
             [kondoq.project-status :as project-status]
@@ -13,12 +13,8 @@
             [next.jdbc.transaction])
   (:import java.util.Base64))
 
-;; - use github tokens (either oauth or basic auth:
-;; - implement webflow in app to allow repo submission from a form and fetch
-;; the data using the user's github access?
-
 ;; Fetch a github resource with authentication and etag caching
-(defn fetch-github-resource [etag-db url token]
+(defn- fetch-github-resource [etag-db url token]
   (let [[cached-etag cached-body] (get-etag-body etag-db url)
         response (-> (client/get url
                                  {:accept "application/vnd.github.v3+json"
@@ -44,17 +40,17 @@
           (insert-etag-body etag-db url etag body))
         body))))
 
-;; List of source file name patterns which should not be included
-(defn skip-blob? [project-name {:keys [path]}]
+;; List of source file name patterns which should not be included.
+(defn- skip-blob? [project-name {:keys [path]}]
   (or
    (#{"project.clj"} path)
-   ;; clj-kondo has some duplicate namespaces
+   ;; Clj-kondo has some duplicate namespaces.
    (and (= project-name "clj-kondo")
         (or (string/includes? path "inlined")
             (string/includes? path "corpus")))))
 
-;; list of file name / blob-url / display-url maps
-(defn fetch-clojure-source-files [etag-db user project-name token]
+;; List of file name / blob-url / display-url maps.
+(defn- fetch-clojure-source-files [etag-db user project-name token]
   (let [tree-url (str "https://api.github.com/repos/"
                       user "/" project-name
                       "/git/trees/master?recursive=true")
@@ -70,10 +66,10 @@
                                    path)
                  :sha sha})))))
 
-;; insert/analyze a file (git blob) of a project
-;; note that clj-kondo needs the extension of a file to determine the
-;; language
-(defn insert-git-blob [db project ^String blob encoding sha display-url]
+;; Insert/analyze a file (git blob) of a project.
+;; Note that clj-kondo requires the extension of a file to determine the
+;; language to analyze.
+(defn- insert-git-blob [db project ^String blob encoding sha display-url]
   (when (= encoding "base64")
     (log/info "inserting file " display-url)
     ;; clj-kondo only handles file paths as input
@@ -82,13 +78,18 @@
       (try
         (with-open [w (io/output-stream file)]
           (.write w (.decode (Base64/getMimeDecoder) blob)))
-        (db/insert-path db project (.getAbsolutePath file) display-url)
+        (let [namespace-analysis (analysis/analyze (.getAbsolutePath file))]
+          (db/insert-namespace db namespace-analysis project display-url))
         (finally
           (.delete file))))))
 
-;; Wrap the whole action in a single transaction, so it can be cancelled and
-;; rolled-back.
-(defn upsert-project [db-arg etag-db project-url token]
+(defn upsert-project
+  "Add the var usages of the GitHub project at `project-url` to the database
+  at `db-arg`, using an optional `token` for access and `etag-db` for source file
+  caching.
+  A project is added in a single transaction, any errors will rollback
+  all related changes."
+  [db-arg etag-db project-url token]
   (try
     (jdbc/with-transaction [db db-arg]
       (let [[user project] (take-last 2 (string/split project-url #"/"))

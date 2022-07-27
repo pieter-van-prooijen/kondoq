@@ -1,5 +1,7 @@
 (ns kondoq.web
-  (:require [clojure.string :as string]
+  "Web setup, ring handlers and related functions."
+  (:require [clojure.java.io :as io]
+            [clojure.string :as string]
             [clojure.tools.logging :as log]
             [integrant.core :as ig]
             [kondoq.database :as db]
@@ -10,21 +12,20 @@
             [ring.middleware.keyword-params :as keyword-params]
             [ring.middleware.params :as params]
             [ring.middleware.resource :as resource]
-            [ring.util.response :as resp]
-            [clojure.edn :as edn]
-            [clojure.java.io :as io]))
+            [ring.util.response :as resp]))
 
 (def config {:adapter/jetty {:port 3002
-                             :db (ig/ref :kondoq/db)
+                             x              :db (ig/ref :kondoq/db)
                              :etag-db (ig/ref :kondoq/etag-db)}})
 
-;; From partsbin, pour the request into the component to make the component
-;; accessible in down-stream handlers (wrap-component h {:db db}) will return a
-;; handler which has the database accessible under :db in the request map
-(defn wrap-component [handler component]
+(defn- wrap-component
+  "(from partsbin) Return a ring handler which makes the `component` map part
+  of the ring request so it's accessible by the down-stream `handler`.
+  For instance (wrap-component h {:db db}) will return a handler which has the
+  database accessible under :db in the request map"
+  [handler component]
   (fn [request]
     (handler (merge request component))))
-
 
 (declare create-handler)
 
@@ -37,36 +38,36 @@
                     (resource/wrap-resource "public")
                     (wrap-component {:db db})
                     (wrap-component {:etag-db etag-db}))
-                ;; :join? => true will block the thread until the server ends
+                ;; :join? => true will block the thread until the server ends.
                 {:port port :join? false})]
     server))
 
 (defmethod ig/halt-key! :adapter/jetty [_ server]
   (log/info "stopping jetty server" server)
   (.stop server)
-  ;; reset will sometimes start the server before it is really stopped?
+  ;; Reset will sometimes start the server before it is really stopped?
   (.join server)
   (log/info "stopped jetty server" server))
 
-(defn coerce-param [x default convert]
+(defn- coerce-param [x default convert]
   (if (string/blank? x)
     default
     (convert x))
   )
-(defn fetch-namespaces-usages-handler [{:keys [db params]}]
+(defn- fetch-namespaces-usages-handler [{:keys [db params]}]
   (let [{:keys [fq-symbol-name arity page page-size]} params
-        body (db/fetch-namespaces-usages db
-                                         fq-symbol-name
-                                         (coerce-param arity nil parse-long)
-                                         (coerce-param page 0 parse-long)
-                                         (coerce-param page-size 10 parse-long))]
+        body (db/search-namespaces-usages db
+                                          fq-symbol-name
+                                          (coerce-param arity nil parse-long)
+                                          (coerce-param page 0 parse-long)
+                                          (coerce-param page-size 10 parse-long))]
     (-> body
         pr-str
         resp/response
         (resp/content-type "application/edn"))))
 
-;; Assumes running from an uberjar with only a single manifest on the classpath
-(defn fetch-uberjar-manifest [ns]
+;; Assumes running from an uberjar with only a single manifest on the classpath.
+(defn- fetch-uberjar-manifest [ns]
   (when-let [clazz (try (Class/forName (name ns))
                         (catch ClassNotFoundException _))]
     (->> (str "jar:" (-> clazz
@@ -80,8 +81,8 @@
          (map (fn [[k v]] [(str k) v]))
          (into {}))))
 
-;; projects loads both the project list and the manifest
-(defn fetch-projects-handler [{:keys [db]}]
+;; The GET to /projects loads both the project list and the manifest.
+(defn- fetch-projects-handler [{:keys [db]}]
   (let [projects (db/search-projects db)
         manifest (fetch-uberjar-manifest 'kondoq.server)]
     (-> {:projects projects
@@ -90,7 +91,7 @@
         resp/response
         (resp/content-type "application/edn"))))
 
-(defn fetch-symbol-counts-handler [{:keys [db params]}]
+(defn- fetch-symbol-counts-handler [{:keys [db params]}]
   (let [q (:q params)
         symbol-counts (if (>= (count q) 2)
                         (db/search-symbol-counts db (str "%" q "%") 10)
@@ -100,10 +101,10 @@
         resp/response
         (resp/content-type "application/edn"))))
 
-(defn add-project-handler [{:keys [db etag-db params] :as request}]
+(defn- add-project-handler [{:keys [db etag-db params] :as request}]
   (let [project-url (get-in request [:reitit.core/match :path-params :project-url])
         token (:token params)
-        ;; load in background
+        ;; Load the project in the background.
         project-future (future (github/upsert-project db etag-db project-url token))]
     (log/info "adding project with url and token ending in"
               project-url
@@ -111,7 +112,7 @@
     (project-status/init-project-status project-url project-future)
     (resp/created (str "/projects/" project-url))))
 
-(defn get-project-status-handler [request]
+(defn- get-project-status-handler [request]
   (let [project-url (get-in request [:reitit.core/match :path-params :project-url])]
     (-> (or (project-status/fetch-project-status project-url) {})
         (dissoc :future)
@@ -119,7 +120,7 @@
         resp/response
         (resp/content-type "application/edn"))))
 
-(defn delete-project-handler [request]
+(defn- delete-project-handler [request]
   (let [project-url (get-in request [:reitit.core/match :path-params :project-url])
         db (:db request)]
     (db/delete-project-by-location db project-url)
@@ -127,7 +128,7 @@
     (-> (resp/response "")
         (resp/status 204))))
 
-(defn cancel-add-project-handler [request]
+(defn- cancel-add-project-handler [request]
   (let [project-url (get-in request [:reitit.core/match :path-params :project-url])
         {project-future :future} (project-status/fetch-project-status project-url)]
     (if (future? project-future)
@@ -138,12 +139,12 @@
             (resp/status 202)))
       (resp/not-found project-url))))
 
-(defn create-handler []
+(defn- create-handler []
   (let [router (rring/router
                 [["/usages" fetch-namespaces-usages-handler]
                  ["/symbol-counts" fetch-symbol-counts-handler]
                  ["/projects" fetch-projects-handler]
-                 ["/projects/:project-url" {:name :project-crud ; name is required?
+                 ["/projects/:project-url" {:name :project-crud ; Name is required by reitit?
                                             :get get-project-status-handler
                                             :put add-project-handler
                                             :delete delete-project-handler}]
@@ -160,7 +161,6 @@
   (h {:request-method :get :uri "/symbol-counts"})
   (h )
 
-  (string/blank? nil)
   (require 'clj-http.client)
   (clj-http.client/get "http://localhost:8280/usages?fq-symbol-name&arity")
   (fetch-namespaces-usages-handler {:params {:fq-symbol-name "clojure.core/inc"
@@ -170,7 +170,7 @@
   (-> (clj-http.client/get "http://localhost:8280/projects")
       #_(fetch-projects-handler {:db (db)})
       :body
-      edn/read-string)
+      )
   (clj-http.client/get "http://localhost:8280/projects")
 
   (fetch-uberjar-manifest 'kondoq.server)

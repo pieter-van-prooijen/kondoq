@@ -2,14 +2,14 @@
   (:require [clojure.string :as string]
             [clojure.test :refer [deftest testing is]:as t]
             [kondoq.database :as db]
-            [kondoq.github :refer [upsert-project fetch-github-resource]]
+            [kondoq.github :refer [upsert-project]]
             [kondoq.project-status :as project-status]
             [kondoq.test-utils :refer [*db*] :as tu])
   (:import java.util.Base64))
 
 (def ^:dynamic *slow* false)
 
-;; simulate retrieving a base64 encoded source blob from this project's sources
+;; Simulate retrieving a base64 encoded source blob from this project's sources.
 (defn project-source-file-blob [source-file]
   (->> (str "src/kondoq/" source-file)
        slurp
@@ -41,7 +41,7 @@
              (get blobs url))))
 
 (defn system-fixture [f]
-  (with-redefs [fetch-github-resource mocked-fetch-github-resource]
+  (with-redefs [kondoq.github/fetch-github-resource mocked-fetch-github-resource]
     (f)))
 
 (t/use-fixtures :once tu/system-fixture system-fixture)
@@ -82,23 +82,23 @@
 (deftest test-upsert-project
   (testing "upsert a project"
     (upsert-project *db* nil project-url nil)
-    (is (poll-for-usages 10) "usages should have been added")))
+    (is (poll-for-usages 10) "Usages should have been added.")))
 
 (deftest test-cancel-upsert-project
-  (testing "cancel upserting a project"
-    (with-redefs [*slow* true] ; project upload should take about 1500ms
+  (testing "Cancel upserting a project."
+    (with-redefs [*slow* true] ; Project upload should take about 1500ms.
       (let [project-future (future (upsert-project *db* nil project-url nil))]
         (project-status/init-project-status project-url project-future)
         (is (poll-for-project-status project-url 10)
-            "some namespaces should have been added before cancelling")
+            "Some namespaces should have been added before cancelling.")
 
-        ;; cancel should trigger rollback because of interrupted exception
+        ;; cancel should trigger rollback because of an 'interrupted' exception
         (.cancel project-future true)
 
         (Thread/sleep 2000) ; wait till transaction is finished and rolled back
         (is (nil? (project-status/fetch-project-status project-url))
-            "project status should have been deleted after cancel")
+            "Project status should have been deleted after cancel.")
         (is (poll-for-no-usages 10)
-            "the entire project should have been removed in the rollback")))))
+            "The entire project should have been removed in the rollback.")))))
 
 

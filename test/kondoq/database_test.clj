@@ -1,5 +1,6 @@
 (ns kondoq.database-test
   (:require [clojure.test :as t :refer [deftest is]]
+            [kondoq.analysis :refer [analyze]]
             [kondoq.database :as db]
             [kondoq.test-utils :refer [*db*] :as tu]))
 
@@ -30,7 +31,9 @@
                               context-bar
                               "\n"))
         _ (db/insert-project *db* "test-project" "http://example.com")
-        _ (db/insert-path *db* "test-project" filename "http://example.com/kondoq-test.clj")
+        analysis (analyze filename)
+        _ (db/insert-namespace *db* analysis "test-project"
+                               "http://example.com/kondoq-test.clj")
         [usage-1 usage-2] (db/search-usages *db* "clojure.core/inc" 1 0 10)]
     (is (= 3 (:start-context usage-1)))
     (is (= "  (inc 1)" (:line usage-1)))
@@ -40,18 +43,19 @@
     (is (= context-bar (:context usage-2)))
     (.delete (java.io.File. filename))))
 
-;; returns the filenmae to be deleted by the test itself
+;; returns the filename to be deleted by the test itself
 (defn- insert-test-project []
   (let [filename "/tmp/kondoq-test.clj"
         context "(defn foo []\n  (inc 1)\n(dec 2))"]
     (spit filename (str "(ns test-project)\n\n" context "\n"))
     (db/insert-project *db* "test-project" "http://example.com")
-    (db/insert-path *db* "test-project" filename "http://example.com/kondoq-test.clj")
+    (db/insert-namespace *db* (analyze filename)"test-project"
+                         "http://example.com/kondoq-test.clj")
     filename))
 
 (deftest fetch-usages-with-empty-string
   (let [filename (insert-test-project)
-        {:keys [_ _ usages]} (db/fetch-namespaces-usages *db* "" -1 0 10)]
+        {:keys [_ _ usages]} (db/search-namespaces-usages *db* "" -1 0 10)]
     (is (empty? usages))
     (.delete (java.io.File. filename))))
 
