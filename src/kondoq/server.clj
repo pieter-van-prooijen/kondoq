@@ -28,7 +28,7 @@
 (comment
   (defn- db [] (:kondoq/db integrant.repl.state/system))
 
-  ;; sometimes failes with "table namespaces already exists" but still creates
+  ;; Sometimes fails with "table namespaces already exists" but still creates
   ;; all the tables? Connection pool problem?
   (db/create-schema (db))
   (db/delete-schema (db))
