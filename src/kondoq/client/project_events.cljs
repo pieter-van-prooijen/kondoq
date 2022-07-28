@@ -1,4 +1,4 @@
-(ns kondoq.project-events
+(ns kondoq.client.project-events
   (:require [cljs.reader :refer [read-string]]
             [day8.re-frame.tracing :refer-macros [fn-traced]]
             [goog.uri.utils]

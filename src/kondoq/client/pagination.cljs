@@ -1,4 +1,4 @@
-(ns kondoq.pagination
+(ns kondoq.client.pagination
   (:require [cljs.math :as math]))
 
 ;; See mdn random documentation

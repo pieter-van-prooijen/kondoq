@@ -1,4 +1,4 @@
-(ns kondoq.util
+(ns kondoq.client.util
   (:require [clojure.string :as string]
             [re-frame.core]))
 

@@ -1,4 +1,4 @@
-(ns kondoq.project-status
+(ns kondoq.server.project-status
   "Manage temporary project status properties, while a project is being added.
   In memory, works because of single writer.")
 

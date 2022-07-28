@@ -1,8 +1,8 @@
-(ns kondoq.database-test
+(ns kondoq.server.database-test
   (:require [clojure.test :as t :refer [deftest is]]
-            [kondoq.analysis :refer [analyze]]
-            [kondoq.database :as db]
-            [kondoq.test-utils :refer [*db*] :as tu]))
+            [kondoq.server.analysis :refer [analyze]]
+            [kondoq.server.database :as db]
+            [kondoq.server.test-utils :refer [*db*] :as tu]))
 
 (t/use-fixtures :once tu/system-fixture)
 (t/use-fixtures :each tu/database-fixture)

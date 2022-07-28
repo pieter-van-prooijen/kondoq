@@ -1,6 +1,6 @@
-(ns kondoq.pagination-test
+(ns kondoq.client.pagination-test
   (:require [cljs.test :as t :include-macros true]
-            [kondoq.pagination :refer [build-page-nums]]))
+            [kondoq.client.pagination :refer [build-page-nums]]))
 
 (t/deftest build-pagenums-test
   (t/are [x y] (= x y)

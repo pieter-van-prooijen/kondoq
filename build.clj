@@ -2,8 +2,7 @@
 ;; invoke with 'java -jar target/kondoq-<version>-standalone.jar'
 ;;
 (ns build
-  (:require [clojure.string :as string]
-            [clojure.tools.build.api :as b]))
+  (:require [clojure.tools.build.api :as b]))
 
 (def lib 'kondoq)
 (def version (format "1.0.%s" (b/git-count-revs nil)))
@@ -25,7 +24,7 @@
   (clean nil)
 
   (when (and check-working-tree (not (working-tree-clean?)))
-    (println "working tree not clean, aborting, skip this check with 'check-working-tree false' as arguments")
+    (println "working tree not clean, aborting, skip this check with `:check-working-tree false` as arguments")
     (System/exit 1))
 
   (b/process {:command-args ["npx" "shadow-cljs" "release" "app"]})
@@ -37,7 +36,7 @@
   (b/uber {:class-dir class-dir
            :uber-file uber-file
            :basis basis
-           :main 'kondoq.server
+           :main 'kondoq.server.core
            :manifest {"Creation-Date" (str (java.time.ZonedDateTime/now java.time.ZoneOffset/UTC))
                       "Implementation-Version" version
                       "Git-Commit" (b/git-process {:git-args "rev-parse HEAD"})}}))

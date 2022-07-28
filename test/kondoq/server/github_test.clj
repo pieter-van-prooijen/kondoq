@@ -1,17 +1,17 @@
-(ns kondoq.github-test
+(ns kondoq.server.github-test
   (:require [clojure.string :as string]
             [clojure.test :refer [deftest testing is]:as t]
-            [kondoq.database :as db]
-            [kondoq.github :refer [upsert-project]]
-            [kondoq.project-status :as project-status]
-            [kondoq.test-utils :refer [*db*] :as tu])
+            [kondoq.server.database :as db]
+            [kondoq.server.github :refer [upsert-project]]
+            [kondoq.server.project-status :as project-status]
+            [kondoq.server.test-utils :refer [*db*] :as tu])
   (:import java.util.Base64))
 
 (def ^:dynamic *slow* false)
 
 ;; Simulate retrieving a base64 encoded source blob from this project's sources.
 (defn project-source-file-blob [source-file]
-  (->> (str "src/kondoq/" source-file)
+  (->> (str "src/kondoq/server/" source-file)
        slurp
        .getBytes
        (.encode (Base64/getMimeEncoder))
@@ -41,7 +41,7 @@
              (get blobs url))))
 
 (defn system-fixture [f]
-  (with-redefs [kondoq.github/fetch-github-resource mocked-fetch-github-resource]
+  (with-redefs [kondoq.server.github/fetch-github-resource mocked-fetch-github-resource]
     (f)))
 
 (t/use-fixtures :once tu/system-fixture system-fixture)

@@ -1,11 +1,9 @@
-(ns kondoq.test-utils
-  (:require [clojure.test :as t]
-            [integrant.core :as ig]
-            [kondoq.database :as db]))
+(ns kondoq.server.test-utils
+  (:require [integrant.core :as ig]
+            [kondoq.server.database :as db]))
 
 ;;
-;; Checkme: can this run in parallel with the regular repl system ?
-;; seeing "table already exists" errors
+;; CHECKME: can this run in parallel with the regular repl system ?
 (def ^:dynamic *system*)
 (def ^:dynamic *db*)
 

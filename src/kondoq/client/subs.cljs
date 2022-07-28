@@ -1,7 +1,7 @@
-(ns kondoq.subs
+(ns kondoq.client.subs
   (:require
    [cljs.math :as math]
-   [kondoq.util :refer [usage-key]]
+   [kondoq.client.util :refer [usage-key]]
    [re-frame.core :refer [reg-sub]]))
 
 ;; change the last coll in colls to a seq of [[x count] nil]

@@ -47,6 +47,14 @@
   :build {:deps {io.github.clojure/tools.build {:git/tag "v0.8.3" :git/sha "0d20256"}}
           :ns-default build}
 
+  :test
+  {:extra-paths ["test"]
+   :extra-deps {com.cognitect/test-runner {:git/url "https://github.com/cognitect-labs/test-runner.git"
+                                           :git/tag "v0.5.1"
+                                           :git/sha "dfb30dd"}}
+   :main-opts ["-m" "cognitect.test-runner"]
+   :exec-fn cognitect.test-runner.api/test}
+
   ;; -X:deps-tree for all deps
   ;; -X:outdated for old dependencies
   :outdated {:extra-deps {com.github.liquidz/antq {:mvn/version "RELEASE"}}

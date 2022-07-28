@@ -1,14 +1,14 @@
-(ns kondoq.github
+(ns kondoq.server.github
   (:require [clj-http.client :as client]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as string]
             [clojure.tools.logging :as log]
             [jsonista.core :as json]
-            [kondoq.analysis :as analysis]
-            [kondoq.database :as db]
-            [kondoq.etag :refer [get-etag-body insert-etag-body]]
-            [kondoq.project-status :as project-status]
+            [kondoq.server.analysis :as analysis]
+            [kondoq.server.database :as db]
+            [kondoq.server.etag :refer [get-etag-body insert-etag-body]]
+            [kondoq.server.project-status :as project-status]
             [next.jdbc :as jdbc]
             [next.jdbc.transaction])
   (:import java.util.Base64))

@@ -1,4 +1,4 @@
-(ns kondoq.config)
+(ns kondoq.client.config)
 
 (def debug?
   ^boolean goog.DEBUG)

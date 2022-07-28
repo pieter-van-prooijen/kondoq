@@ -1,9 +1,9 @@
 (ns user
   (:require [integrant.repl :refer [clear go halt prep init reset reset-all]]
-            [kondoq.server]
+            [kondoq.server.core]
             [shadow.cljs.devtools.server]))
 
-(integrant.repl/set-prep! (constantly kondoq.server/config))
+(integrant.repl/set-prep! (constantly kondoq.server.core/config))
 
 (comment
 

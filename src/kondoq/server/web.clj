@@ -1,12 +1,12 @@
-(ns kondoq.web
+(ns kondoq.server.web
   "Web setup, ring handlers and related functions."
   (:require [clojure.java.io :as io]
             [clojure.string :as string]
             [clojure.tools.logging :as log]
             [integrant.core :as ig]
-            [kondoq.database :as db]
-            [kondoq.github :as github]
-            [kondoq.project-status :as project-status]
+            [kondoq.server.database :as db]
+            [kondoq.server.github :as github]
+            [kondoq.server.project-status :as project-status]
             [reitit.ring :as rring]
             [ring.adapter.jetty :as jetty]
             [ring.middleware.keyword-params :as keyword-params]
@@ -15,7 +15,7 @@
             [ring.util.response :as resp]))
 
 (def config {:adapter/jetty {:port 3002
-                             x              :db (ig/ref :kondoq/db)
+                             :db (ig/ref :kondoq/db)
                              :etag-db (ig/ref :kondoq/etag-db)}})
 
 (defn- wrap-component

@@ -1,4 +1,4 @@
-(ns kondoq.database
+(ns kondoq.server.database
   "Sqlite database connections, schemas, actions and queries."
   (:require [clojure.string :as string]
             [clojure.tools.logging :as log]

@@ -1,8 +1,8 @@
-(ns kondoq.project-views
+(ns kondoq.client.project-views
   (:require [goog.dom :as dom]
-            [kondoq.project-events :as project-events]
-            [kondoq.subs :as subs]
-            [kondoq.util :refer [<sub >evt] :as util]))
+            [kondoq.client.project-events :as project-events]
+            [kondoq.client.subs :as subs]
+            [kondoq.client.util :refer [<sub >evt] :as util]))
 
 (defn show-enter-project-url [e]
   (.preventDefault e)

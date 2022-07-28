@@ -1,4 +1,4 @@
-(ns kondoq.analysis
+(ns kondoq.server.analysis
   "Analyze Clojure(Script) source code for var usages using clj-kondo."
   (:require [clj-kondo.core :as clj-kondo]
             [clojure.java.io :as io]))

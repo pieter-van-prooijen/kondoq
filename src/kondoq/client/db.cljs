@@ -1,4 +1,4 @@
-(ns kondoq.db)
+(ns kondoq.client.db)
 
 (def default-db
   ;; usage of a var

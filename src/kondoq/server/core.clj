@@ -1,10 +1,10 @@
-(ns kondoq.server
+(ns kondoq.server.core
   (:gen-class)
   (:require [clojure.tools.logging :as log]
             [integrant.core :as ig]
-            [kondoq.database :as db]
-            [kondoq.etag :as etag]
-            [kondoq.web :as web]))
+            [kondoq.server.database :as db]
+            [kondoq.server.etag :as etag]
+            [kondoq.server.web :as web]))
 
 (def config (merge web/config
                    etag/config

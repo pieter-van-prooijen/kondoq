@@ -1,10 +1,10 @@
-(ns kondoq.views
+(ns kondoq.client.views
   (:require [goog.dom :as dom]
-            [kondoq.events :as events]
-            [kondoq.pagination]
-            [kondoq.project-views :as project-views]
-            [kondoq.subs :as subs]
-            [kondoq.util :refer [<sub >evt usage-key add-line-markup] :as util]))
+            [kondoq.client.events :as events]
+            [kondoq.client.pagination]
+            [kondoq.client.project-views :as project-views]
+            [kondoq.client.subs :as subs]
+            [kondoq.client.util :refer [<sub >evt usage-key add-line-markup] :as util]))
 
 (defn ancestors-expanded [k parents expanded]
   (if-let [parent (parents k)]
@@ -124,7 +124,7 @@
         page-count (<sub [::subs/page-count])
         page-size (<sub [::subs/page-size])]
     (when (pos? page-count)
-      [kondoq.pagination/pagination
+      [kondoq.client.pagination/pagination
        page
        page-count
        (fn [page] (>evt [::events/fetch-namespaces-usages

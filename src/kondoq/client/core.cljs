@@ -1,8 +1,8 @@
-(ns kondoq.core
+(ns kondoq.client.core
   (:require
-   [kondoq.config :as config]
-   [kondoq.events :as events]
-   [kondoq.views :as views]
+   [kondoq.client.config :as config]
+   [kondoq.client.events :as events]
+   [kondoq.client.views :as views]
    [re-frame.core :as re-frame]
    [reagent.dom :as rdom]))
 

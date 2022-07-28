@@ -1,9 +1,9 @@
-(ns kondoq.events
+(ns kondoq.client.events
   (:require [cljs.reader :refer [read-string]]
             [day8.re-frame.tracing :refer-macros [fn-traced]]
             [goog.net.XhrIo :as xhrio]
             [goog.uri.utils]
-            [kondoq.project-events :as project-events]
+            [kondoq.client.project-events :as project-events]
             [re-frame.core :as re-frame]))
 
 (re-frame/reg-event-fx

@@ -1,4 +1,4 @@
-(ns kondoq.etag
+(ns kondoq.server.etag
   "Cache database which maps a url to an etag + response body to minimize requests to
   the GitHub API, as etag hits do not count toward your request limit.
   Uses a separate database to keep the main code database clean. No eviction policy has

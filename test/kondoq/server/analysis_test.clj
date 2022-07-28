@@ -1,9 +1,9 @@
-(ns kondoq.analysis-test
+(ns kondoq.server.analysis-test
   (:require [clojure.test :as t :refer [deftest is]]
-            [kondoq.analysis :refer [analyze]]))
+            [kondoq.server.analysis :refer [analyze]]))
 
-(def valid-var-usage? @#'kondoq.analysis/valid-var-usage?)
-(def usage-context @#'kondoq.analysis/usage-context)
+(def valid-var-usage? @#'kondoq.server.analysis/valid-var-usage?)
+(def usage-context @#'kondoq.server.analysis/usage-context)
 
 (deftest valid-var-usage
   (is (valid-var-usage? {:to 'to-ns
