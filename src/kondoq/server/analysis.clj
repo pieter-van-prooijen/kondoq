@@ -20,6 +20,9 @@
 (defn- valid-var-usage? [usage]
   (every? #(get usage %) [:to :name :from :row :col :end-row]))
 
+(defn- test-namespace? [ns]
+  (and (some? ns) (some? (re-find #"(-|_)test$" (name ns)))))
+
 (defn- read-source-lines
   "Read the source code file at `path` as a vector of lines."
   [path]
@@ -66,7 +69,10 @@
                    ;; Parsing a .cljc file will give two entries for each usage,
                    ;; which are usually the same for non-core vars.
                    (distinct))]
-    {:namespace namespace :usages usages :source-lines source-lines}))
+    {:namespace namespace
+     :test-namespace (test-namespace? namespace)
+     :usages usages
+     :source-lines source-lines}))
 
 (comment
 
@@ -83,4 +89,7 @@
   (clj-kondo/run! {:lint ["src/kondoq/views.cljs"]
                    :config {:analysis true
                             :skip-lint true}})
+
+  (re-find #"(-|_)test\.(clj|cljc|cljs)$" "a-test.clj")
+  (test-namespace? 'a-test)
   )

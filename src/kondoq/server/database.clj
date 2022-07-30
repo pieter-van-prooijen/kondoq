@@ -44,7 +44,8 @@
 
   (jdbc/execute! db [(str "CREATE TABLE namespaces ("
                           " ns TEXT PRIMARY KEY,"
-                          " location TEXT,"
+                          " test INTEGER NOT NULL,"
+                          " location TEXT NOT NULL,"
                           " project TEXT NOT NULL,"
                           " FOREIGN KEY(project) REFERENCES projects(project) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED )")])
   (jdbc/execute! db ["CREATE INDEX namespaces_project_index ON namespaces(project)"])
@@ -150,10 +151,11 @@
   The namespace will be marked as belonging to `project` and having a public
   url of `location`."
   [db namespace-analysis project location]
-  (let [{:keys [namespace usages source-lines]} namespace-analysis]
+  (let [{:keys [namespace test-namespace usages source-lines]} namespace-analysis]
     (when (and namespace (seq usages))
       (let [sql (-> (sql-h/insert-into :namespaces)
                     (sql-h/values [{:ns (str namespace)
+                                    :test test-namespace
                                     :location location
                                     :project project}])
                     (sql/format {:pretty true}))
@@ -191,7 +193,10 @@
                                            [:mc.source-code :context]]
                          :from [[:var-usages :u]]
                          :where (symbol-arity-where-clause arity)
-                         :order-by [[:n.project :asc] [:u.used-in-ns :asc] [:u.line-no :asc]]
+                         :order-by [[:n.test :asc] ; Test namespaces come last.
+                                    [:n.project :asc]
+                                    [:u.used-in-ns :asc]
+                                    [:u.line-no :asc]]
                          :inner-join [[:namespaces :n]
                                       [:= :u.used-in-ns :n.ns]
                                       [:contexts :sc] ; Single-line context.

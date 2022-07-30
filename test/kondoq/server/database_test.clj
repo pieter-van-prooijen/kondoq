@@ -1,8 +1,10 @@
 (ns kondoq.server.database-test
   (:require [clojure.test :as t :refer [deftest is]]
+            [honey.sql :as sql]
             [kondoq.server.analysis :refer [analyze]]
             [kondoq.server.database :as db]
-            [kondoq.server.test-utils :refer [*db*] :as tu]))
+            [kondoq.server.test-utils :refer [*db*] :as tu]
+            [next.jdbc.sql :as jdbc-sql]))
 
 (t/use-fixtures :once tu/system-fixture)
 (t/use-fixtures :each tu/database-fixture)
@@ -66,4 +68,21 @@
         _ (is (= 1 (count symbol-counts)))
         symbol-counts (db/search-symbol-counts *db* "%d%ec%" 10)
         _ (is (= 1 (count symbol-counts)))] ;; should be zero matches
+    (.delete (java.io.File. filename))))
+
+(deftest should-recognize-test-namespaces
+  (let [filename "/tmp/kondoq-test.clj"
+        context-foo "(defn foo []\n  (inc 1)\n(dec 2))"
+        _ (spit filename (str "(ns test-project)\n\n"
+                              context-foo))
+        _ (db/insert-project *db* "test-project" "http://example.com")
+        analysis (analyze filename)
+        _ (db/insert-namespace *db* analysis "test-project"
+                               "http://example.com/kondoq-test.clj")
+        [{:keys [:ns :test]}] (jdbc-sql/query *db* (sql/format {:select [:ns :test]
+                                                                :from [:namespaces]}))]
+    (is (:test-namespace analysis))
+    (is (= 1 test)) ; Sqlite stores booleans as 0 or 1.
+    (is test)
+    (is (= "test-project" ns))
     (.delete (java.io.File. filename))))
