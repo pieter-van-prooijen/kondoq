@@ -1,10 +1,12 @@
 (ns kondoq.server.github-test
-  (:require [clojure.string :as string]
+  (:require [clj-http.client]
+            [clojure.string :as string]
             [clojure.test :refer [deftest testing is]:as t]
+            [jsonista.core :as json]
             [kondoq.server.database :as db]
             [kondoq.server.github :refer [upsert-project]]
             [kondoq.server.project-status :as project-status]
-            [kondoq.server.test-utils :refer [*db*] :as tu])
+            [kondoq.server.test-utils :refer [*db* *etag-db*] :as tu])
   (:import java.util.Base64))
 
 (def ^:dynamic *slow* false)
@@ -31,17 +33,21 @@
             {:content (project-source-file-blob "web.clj")
              :encoding "base64"}})
 
-(defn mocked-fetch-github-resource [_ url _]
-  (condp (fn [substr s] (string/includes? s substr)) url
-    "/git/trees/master" source-files
-    ".clj" (if *slow*
-             (do
-               (Thread/sleep 500)
-               (get blobs url))
-             (get blobs url))))
+;; Mock the http calls to GitHub.
+(defn mocked-http-get [url _]
+  (let [body (condp #(string/includes? %2 %1) url
+               "/git/trees/master" source-files
+               ".clj" (if *slow*
+                        (do
+                          (Thread/sleep 500)
+                          (get blobs url))
+                        (get blobs url)))]
+    {:headers {"Etag" url} ; Etag is not really used for now
+     :status 200
+     :body (json/write-value-as-string body)}))
 
 (defn system-fixture [f]
-  (with-redefs [kondoq.server.github/fetch-github-resource mocked-fetch-github-resource]
+  (with-redefs [clj-http.client/get mocked-http-get]
     (f)))
 
 (t/use-fixtures :once tu/system-fixture system-fixture)
@@ -81,13 +87,13 @@
 
 (deftest test-upsert-project
   (testing "upsert a project"
-    (upsert-project *db* nil project-url nil)
+    (upsert-project *db* *etag-db* project-url nil)
     (is (poll-for-usages 10) "Usages should have been added.")))
 
 (deftest test-cancel-upsert-project
   (testing "Cancel upserting a project."
     (with-redefs [*slow* true] ; Project upload should take about 1500ms.
-      (let [project-future (future (upsert-project *db* nil project-url nil))]
+      (let [project-future (future (upsert-project *db* *etag-db* project-url nil))]
         (project-status/init-project-status project-url project-future)
         (is (poll-for-project-status project-url 10)
             "Some namespaces should have been added before cancelling.")
