@@ -16,7 +16,7 @@
                :username "kondoq-user" ; hikari uses username instead of user
                :password "kondoq-password"
                :connectionInitSql (str "PRAGMA foreign_keys = ON;"
-                                       "PRAGMA cache_size = 10000;"
+                                       "PRAGMA cache_size = 10000;" ; in 4k pages
                                        "PRAGMA journal_mode = WAL;")}})
 
 ;; Using a connection pool keeps the sqlite database file open between calls to
@@ -39,7 +39,7 @@
 (defn create-schema [db]
   (jdbc/execute! db [(str "CREATE TABLE projects ("
                           " project TEXT PRIMARY KEY CHECK(length(project) <= 127),"
-                          " location TEXT NOT NULL CHECK(length(location) <= 255))",)])
+                          " location TEXT NOT NULL CHECK(length(location) <= 255)) STRICT",)])
   (jdbc/execute! db ["CREATE INDEX projects_location_index ON projects(location)"])
 
   (jdbc/execute! db [(str "CREATE TABLE namespaces ("
@@ -47,7 +47,8 @@
                           " test INTEGER NOT NULL,"
                           " location TEXT NOT NULL,"
                           " project TEXT NOT NULL,"
-                          " FOREIGN KEY(project) REFERENCES projects(project) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED )")])
+                          " FOREIGN KEY(project) REFERENCES projects(project) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED )"
+                          " STRICT")])
   (jdbc/execute! db ["CREATE INDEX namespaces_project_index ON namespaces(project)"])
 
   (jdbc/execute! db [(str "CREATE TABLE var_usages ("
@@ -58,7 +59,8 @@
                           " column_no INTEGER NOT NULL,"
                           " start_context INTEGER,"
                           " end_context INTEGER,"
-                          " FOREIGN KEY(used_in_ns) REFERENCES namespaces(ns) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED)")])
+                          " FOREIGN KEY(used_in_ns) REFERENCES namespaces(ns) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED)"
+                          " STRICT")])
   (jdbc/execute! db ["CREATE INDEX var_usages_symbol_index ON var_usages(symbol)"])
   (jdbc/execute! db ["CREATE INDEX var_usages_arity_index ON var_usages(arity)"])
   (jdbc/execute! db ["CREATE INDEX var_usages_ns_index ON var_usages(used_in_ns)"])
@@ -68,7 +70,8 @@
                           " start_context INTEGER NOT NULL,"
                           " single_line INTEGER NOT NULL,"
                           " source_code TEXT NOT NULL,"
-                          " FOREIGN KEY(ns) REFERENCES namespaces(ns) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED)")])
+                          " FOREIGN KEY(ns) REFERENCES namespaces(ns) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED)"
+                          " STRICT")])
   (jdbc/execute! db ["CREATE UNIQUE INDEX contexts_index ON contexts(ns, start_context, single_line)"]))
 
 (defn delete-schema [db]

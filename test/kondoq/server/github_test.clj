@@ -16,8 +16,7 @@
   (->> (str "src/kondoq/server/" source-file)
        slurp
        .getBytes
-       (.encode (Base64/getMimeEncoder))
-       String.))
+       (.encodeToString (Base64/getMimeEncoder))))
 
 (def source-files {:tree [{:path "database.clj"
                            :url "http://example.com/database.clj"
@@ -33,7 +32,7 @@
             {:content (project-source-file-blob "web.clj")
              :encoding "base64"}})
 
-;; Mock the http calls to GitHub.
+;; Mock the http calls to GitHub using the responses defined above.
 (defn mocked-http-get [url _]
   (let [body (condp #(string/includes? %2 %1) url
                "/git/trees/master" source-files

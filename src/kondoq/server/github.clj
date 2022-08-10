@@ -9,6 +9,7 @@
             [kondoq.server.database :as db]
             [kondoq.server.etag :refer [get-etag-body insert-etag-body]]
             [kondoq.server.project-status :as project-status]
+            [lambdaisland.uri :refer [uri assoc-query]]
             [next.jdbc :as jdbc]
             [next.jdbc.transaction])
   (:import java.util.Base64))
@@ -37,6 +38,7 @@
       (throw (ex-info "too many items in the response" {:url url}))
       (do
         (when (not= (:status response) 304)
+          (log/info "inserting body of url with etag" url etag)
           (insert-etag-body etag-db url etag body))
         body))))
 
@@ -116,6 +118,29 @@
       (let [{error :error} (project-status/fetch-project-status project-url)]
         (when-not error
           (project-status/delete-project-status project-url))))))
+
+(defn oauth-authorize-url [state config]
+  (let [{:keys [github-client-id github-callback-uri]} config]
+    (-> (uri "https://github.com/login/oauth/authorize")
+        (assoc-query
+         "client_id" github-client-id
+         "redirect_uri" github-callback-uri
+         "state" state)
+        str)))
+
+;; Return a token for the given temporary code when logging into github.
+(defn oauth-exchange-token [code config]
+  (let [{:keys [github-client-id github-client-secret]} config
+        response (client/post "https://github.com/login/oauth/access_token"
+                              {:form-params {:client_id github-client-id
+                                             :client_secret github-client-secret
+                                             :code code}
+                               :accept "application/vnd.github.v3+json"})]
+    (-> response
+        :body
+        (json/read-value (json/object-mapper {:decode-key-fn true}))
+        :access_token)))
+
 
 (comment
 

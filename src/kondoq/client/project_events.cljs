@@ -11,7 +11,7 @@
 ;; - error-adding-project (something happened when fetching)
 ;;
 
-;; Fetch a list of all the projects
+;; Fetch a list of all the projects and some application info
 (re-frame/reg-event-fx
  ::fetch-projects
  (fn-traced [_ [_ _]]
@@ -21,10 +21,12 @@
 (re-frame/reg-event-db
  ::process-fetch-projects
  (fn-traced [db [_ response-body]]
-            (let [{:keys [projects manifest]} (read-string response-body)]
+            (let [{:keys [projects manifest config-path]}
+                  (read-string response-body)]
               (-> db
                   (assoc :projects projects)
-                  (assoc :manifest manifest)))))
+                  (assoc :manifest manifest)
+                  (assoc :config-path config-path)))))
 
 ;; Generic cancel event, dispatches to the correct one depending on the state
 (re-frame/reg-event-fx
@@ -53,12 +55,19 @@
  (fn-traced [{:keys [db]} [_ [location token]]]
             {:http [(goog.uri.utils/appendPath "projects"
                                                (js/encodeURIComponent location))
-                    ::fetch-project
+                    ::added-project-result
                     "PUT"
                     (str "token=" (js/encodeURIComponent token))
                     {:content-type "application/x-www-form-urlencoded"}]
              :db (merge db {:projects-state :adding-project
                             :current-project {:location location}})}))
+
+(re-frame/reg-event-fx
+ ::added-project-result
+ (fn-traced [_ [_ response-text]]
+            (if-let [location (get (read-string  response-text) :location)]
+              (set! (. js/window -location) location) ; Oauth redirect
+              {:dispatch [::fetch-project]})))  ; Regular upload
 
 (re-frame/reg-event-fx
  ::cancel-add-project
@@ -68,7 +77,10 @@
                           (goog.uri.utils/appendPath (js/encodeURIComponent location))
                           (goog.uri.utils/appendPath "/adding"))
                       ::fetch-project
-                      "DELETE"])}))
+                      "DELETE"
+                      _
+                      _
+                      ::cancel-add-project])}))
 
 (re-frame/reg-event-fx
  ::cancel-add-project-with-error

@@ -19,7 +19,8 @@
   (jdbc/execute! db [(str "CREATE TABLE IF NOT EXISTS etags ("
                           " url TEXT PRIMARY KEY,"
                           " body TEXT NOT NULL,"
-                          " etag TEXT NOT NULL)")]))
+                          " etag TEXT NOT NULL)"
+                          " STRICT")]))
 
 (defn delete-etag-schema [db]
   (jdbc/execute! db ["DROP TABLE IF EXISTS etags"]))

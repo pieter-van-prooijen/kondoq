@@ -66,7 +66,7 @@
                              :column-no col
                              :start-context start-context
                              :end-context end-context})))
-                   ;; Parsing a .cljc file will give two entries for each usage,
+                   ;; Parsing a .cljc file gives two entries for each usage,
                    ;; which are usually the same for non-core vars.
                    (distinct))]
     {:namespace namespace

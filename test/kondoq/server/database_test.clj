@@ -73,7 +73,7 @@
 (deftest should-recognize-test-namespaces
   (let [filename "/tmp/kondoq-test.clj"
         context-foo "(defn foo []\n  (inc 1)\n(dec 2))"
-        _ (spit filename (str "(ns test-project)\n\n"
+        _ (spit filename (str "(ns kondoq-test)\n\n"
                               context-foo))
         _ (db/insert-project *db* "test-project" "http://example.com")
         analysis (analyze filename)
@@ -84,5 +84,5 @@
     (is (:test-namespace analysis))
     (is (= 1 test)) ; Sqlite stores booleans as 0 or 1.
     (is test)
-    (is (= "test-project" ns))
+    (is (= "kondoq-test" ns))
     (.delete (java.io.File. filename))))

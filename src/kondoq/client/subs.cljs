@@ -128,6 +128,11 @@
    (:manifest db)))
 
 (reg-sub
+ ::config-path
+ (fn [db _]
+   (:config-path db)))
+
+(reg-sub
  ::expanded
  (fn [db _]
    (:expanded db)))

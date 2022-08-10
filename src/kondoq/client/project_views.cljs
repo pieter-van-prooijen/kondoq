@@ -35,11 +35,12 @@
          [:div.control
           [:input.input {:id "project-url"
                          :name "project-url"
+                         :value (:location current-project)
                          :type "text"}]]
          [:p.help "Project URL should have the form https://github.com/<user>/<project>"]]
 
         [:div.field
-         [:label.label "GitHub Personal Access Token (optional)"]
+         [:label.label "GitHub Personal Access Token (leave empty for oath authorization)"]
          [:div.control
           [:input.input {:id "token"
                          :name "token"
@@ -50,7 +51,9 @@
                          "Get a personal access token (<strong>only</strong> for retrieving public git repositories) "
                          "from your github account settings at "
                          "<a target='_blank' href='https://github.com/settings/tokens'>https://github.com/settings/tokens</a>.<br>"
-                         "This token will <strong>not</strong> be stored or logged in the Kondoq backend.")}}]]
+                         "If you leave the token field blank, the app will redirect you to the github oauth login page to get a temporary token that way.<br>"
+                         "<br>"
+                         "Tokens will <strong>not</strong> be stored or logged in the Kondoq backend.<br>")}}]]
 
         [:div.field.is-grouped
          [:div.control
@@ -63,7 +66,7 @@
            {:on-click cancel-projects}
            "Cancel"]]]]
        (cond
-         (#{ :adding-project :error-adding-project} projects-state)
+         (#{:adding-project :error-adding-project} projects-state)
          [:div.level.mt-4
           [:div.level-left
            [:div.level-item

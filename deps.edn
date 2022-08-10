@@ -2,8 +2,8 @@
 
  :deps
  {clj-kondo/tools {:git/url "https://github.com/clj-kondo/clj-kondo"
-                   :tag "v2022.06.22"
-                   :sha "05ab23503a40f040519bb323ee0af7936815b9d1"
+                   :tag "v2022.08.03"
+                   :sha "6915dcfb4a19c2968d9e45b560cc804ad08edcf6"
                    :deps/root "analysis"}
 
   integrant/integrant {:mvn/version "0.8.0"}
@@ -12,9 +12,9 @@
   ring/ring-jetty-adapter {:mvn/version "1.9.5"}
   metosin/reitit-ring {:mvn/version "0.5.18"}
 
-  com.github.seancorfield/next.jdbc {:mvn/version "1.2.780"}
-  com.github.seancorfield/honeysql {:mvn/version "2.2.891"}
-  org.xerial/sqlite-jdbc {:mvn/version "3.36.0.3"}
+  com.github.seancorfield/next.jdbc {:mvn/version "1.2.796"}
+  com.github.seancorfield/honeysql {:mvn/version "2.3.911"}
+  org.xerial/sqlite-jdbc {:mvn/version "3.39.2.0"}
   ;; Hikari uses slf4j-api 2.0, not compatible with logback 1.x
   com.zaxxer/HikariCP {:mvn/version "5.0.1" :exclusions [org.slf4j/slf4j-api]}
 
@@ -22,27 +22,33 @@
   metosin/jsonista {:mvn/version "0.3.6"}
 
   org.clojure/tools.logging {:mvn/version "1.2.4"}
-  ch.qos.logback/logback-classic {:mvn/version "1.2.11"}}
+  ch.qos.logback/logback-classic {:mvn/version "1.2.11"}
+
+  lambdaisland/uri {:mvn/version "1.13.95"}}
 
  :aliases
- {:dev {:extra-paths ["dev" "test"]
-        :extra-deps {integrant/repl {:mvn/version "0.3.2"}
-                     ;; embedded shadow-cljs server start/stop support
-                     ;; see user.clj
-                     ;;
-                     ;; needs shadow.cljs.devtools.server.nrepl/middleware in
-                     ;; the middleware set up by cider
-                     ;; see cider-jack-in-nrepl-middlewares in .dir-locals.el
-                     ;; for the configuration
-                     thheller/shadow-cljs {:mvn/version "2.19.6"}
+ {:dev ;; Use (setq cider-clojure-cli-aliases "dev") in emacs to make cider use this alias on jack-in
+  {:extra-paths ["dev" "test"]
+   :extra-deps {integrant/repl {:mvn/version "0.3.2"}
+                ;; embedded shadow-cljs server start/stop support
+                ;; see user.clj
+                ;;
+                ;; needs shadow.cljs.devtools.server.nrepl/middleware in
+                ;; the middleware set up by cider
+                ;; see cider-jack-in-nrepl-middlewares in .dir-locals.el
+                ;; for the configuration
+                thheller/shadow-cljs {:mvn/version "2.19.8"}
 
-                     ;; duplicate the shadow-cljs.edn deps here
-                     ;; so the embedded shadow-cljs server/compiler works
-                     re-frame/re-frame {:mvn/version "1.2.0"}
-                     binaryage/devtools {:mvn/version "1.0.6"}
-                     day8.re-frame/re-frame-10x {:mvn/version "1.4.1"}
-                     day8.re-frame/tracing {:mvn/version "0.6.2"}}
-        :jvm-opts ["-XX:-OmitStackTraceInFastThrow"]}
+                ;; duplicate the shadow-cljs.edn deps here
+                ;; so the embedded shadow-cljs server/compiler works
+                ;; (the embedded server gives proper
+                ;; clojure / clojurescript switching in cider)
+                re-frame/re-frame {:mvn/version "1.2.0"}
+                binaryage/devtools {:mvn/version "1.0.6"}
+                day8.re-frame/re-frame-10x {:mvn/version "1.5.0"}
+                day8.re-frame/tracing {:mvn/version "0.6.2"}}
+   :jvm-opts ["-XX:-OmitStackTraceInFastThrow"
+              "-Dconfig=github-oauth-dev.edn"]}
 
   :build {:deps {io.github.clojure/tools.build {:git/tag "v0.8.3" :git/sha "0d20256"}}
           :ns-default build}
@@ -55,8 +61,8 @@
    :main-opts ["-m" "cognitect.test-runner"]
    :exec-fn cognitect.test-runner.api/test}
 
-  ;; -X:deps-tree for all deps
-  ;; -X:outdated for old dependencies
+  ;; clj -X:deps tree for all deps
+  ;; clojure -M:outdated for old dependencies
   :outdated {:extra-deps {com.github.liquidz/antq {:mvn/version "RELEASE"}}
              :main-opts ["-m" "antq.core"]}}}
 

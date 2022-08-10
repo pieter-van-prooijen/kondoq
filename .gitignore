@@ -25,4 +25,4 @@
 # App specific ignores
 /data
 github-token.txt
-
+github-oauth-*.edn

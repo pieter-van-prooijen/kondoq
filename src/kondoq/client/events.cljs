@@ -13,6 +13,15 @@
                   :expanded #{}}
              :dispatch [::project-events/fetch-projects]}))
 
+(re-frame/reg-event-fx
+ ::initialize-with-adding-project
+ (fn-traced [_ [_ project-location]]
+            {:db {:active-panel :projects
+                  :expanded #{}
+                  :projects-state :adding-project
+                  :current-project {:location project-location}}
+             :dispatch [::project-events/fetch-project]}))
+
 ;; when clicking on an item, automatically expand all its items to the left
 (defn expand-ancestors [k parents expanded]
   (if-let [parent (parents k)]
@@ -31,9 +40,10 @@
 ;; Execute a http request.
 ;; After success, dispatches an event with the response body or a user defined
 ;; event tupple
+;; TODO: move this to named arguments instead of positional ones.
 (re-frame/reg-fx
  :http
- (fn [[url success-event-or-tupple method body headers]]
+ (fn [[url success-event-or-tupple method body headers error-event-or-tupple]]
    (xhrio/send url
                (fn [ev]
                  (let [^XMLHttpRequest target (.-target ev)
@@ -42,14 +52,18 @@
                      (do
                        (if (coll? success-event-or-tupple)
                          (re-frame/dispatch success-event-or-tupple)
-                         (re-frame/dispatch [success-event-or-tupple response]))
+                         (re-frame/dispatch [success-event-or-tupple response target]))
                        (re-frame/dispatch [::clear-http-failure]))
-                     (re-frame/dispatch [::register-http-failure
-                                         {:last-error-code (.getLastErrorCode target)
-                                          :status (.getStatus target)
-                                          :status-text (.getStatusText target)
-                                          :response response
-                                          :content-type (.getResponseHeader target "Content-Type")}]))))
+                     (if error-event-or-tupple
+                       (if (coll? error-event-or-tupple)
+                         (re-frame/dispatch error-event-or-tupple)
+                         (re-frame/dispatch [error-event-or-tupple response target]))
+                       (re-frame/dispatch [::register-http-failure
+                                           {:last-error-code (.getLastErrorCode target)
+                                            :status (.getStatus target)
+                                            :status-text (.getStatusText target)
+                                            :response response
+                                            :content-type (.getResponseHeader target "Content-Type")}])))))
                (or method "GET")
                body
                (clj->js (merge {:accept "application/edn"} headers)))))

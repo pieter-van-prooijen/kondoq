@@ -4,11 +4,16 @@ A [re-frame](https://github.com/day8/re-frame) / Integrant / jdbc-next applicati
 show var usages in public clojure-(script) projects.
 
 TODO:
-- style guide compliance, consistent naming of "fetch-", "search-" etc.
+- IMPORTANT: externalize oauth secrets / client ids / application urls
+  (remove from github commit!)
+- etag matching on github doesn't work with oauth tokens, as the token differs for each upload? Yes: the response has a
+  Vary header which contains "Authorization" when making an authorized request.
+
+- style guide compliance, consistent naming of "fetch-", "search-" etc. (server done, do client next)
 - more tests
 - give preference to "well-liked" repositories in results? (e.g. sort by number of github stars)
 - up-to-date sqlite jdbc driver? (support for 3.39, strict tables etc.), perhaps use system installed lib instead
-  of unpacking the one in the jar?
+  of unpacking the one in the jar? *in*
 - split in read/write databases (sqlite: file:bla.sqlite?mode=ro ) for later move to single writer?
   (note that read-only replicas in litestream are not working and wil be replaced with new implementation)
 - strip leading whitespace when code context is collapsed?
