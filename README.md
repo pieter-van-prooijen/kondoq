@@ -4,36 +4,19 @@ A [re-frame](https://github.com/day8/re-frame) / Integrant / jdbc-next applicati
 show var usages in public clojure-(script) projects.
 
 TODO:
-- IMPORTANT: externalize oauth secrets / client ids / application urls
-  (remove from github commit!)
+- manifest props don't show on prod
 - etag matching on github doesn't work with oauth tokens, as the token differs for each upload? Yes: the response has a
   Vary header which contains "Authorization" when making an authorized request.
 
 - style guide compliance, consistent naming of "fetch-", "search-" etc. (server done, do client next)
 - more tests
 - give preference to "well-liked" repositories in results? (e.g. sort by number of github stars)
-- up-to-date sqlite jdbc driver? (support for 3.39, strict tables etc.), perhaps use system installed lib instead
-  of unpacking the one in the jar? *in*
 - split in read/write databases (sqlite: file:bla.sqlite?mode=ro ) for later move to single writer?
   (note that read-only replicas in litestream are not working and wil be replaced with new implementation)
 - strip leading whitespace when code context is collapsed?
-- put newly added projects on top of the list with "added" date
-
-
-- production: logging, prod build, deploy to external server (build scripts), *in*
-  deploy to pcextreme, lets encrypt? *in*
-- handle different arities (in type-ahead, allow for all arities as well) *in*
-  distinguish between a specific arity (including zero), all arities and un-used arity (n/a) (e.g. in a higher
-  order function call) *in*
-- paging for large result sets for common vars *in*
-- 
-- delete projects *in*
 
 BUGS:
-- load integrant, search for integrant.core/ref pagination is not right (multiple usage/single line issue)
-  (and cljc issue? , gives double entries *in*
 - security: dangeriously set html in code/error messages. Upload project with malicious javascript?
-  highlight.js should guard against this? *in*, see hljs.configure()
 
 
 ## Getting Started

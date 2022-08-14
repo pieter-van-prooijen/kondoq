@@ -7,6 +7,7 @@
             [integrant.core :as ig]
             [next.jdbc :as jdbc]
             [next.jdbc.connection :as jdbc-connection]
+            [next.jdbc.result-set :as rs]
             [next.jdbc.sql :as jdbc-sql])
   (:import  com.zaxxer.hikari.HikariDataSource))
 
@@ -81,9 +82,15 @@
   (jdbc/execute! db ["DROP TABLE IF EXISTS projects"]))
 
 (defn schema-exists [db]
-  (let [[{:keys [cnt]}]
-        (jdbc/execute! db ["SELECT count(*) as cnt FROM sqlite_master WHERE type='table' AND name='var_usages'"])]
-    (= cnt 1)))
+  (let [tables (with-open [con (jdbc/get-connection db)]
+                 (-> con
+                     .getMetaData
+                     (.getTables nil nil nil (into-array ["TABLE" "VIEW"]))
+                     (rs/datafiable-result-set jdbc/unqualified-snake-kebab-opts)))]
+    (->> tables
+         (map :table-name)
+         (into #{})
+         (= #{"contexts" "namespaces" "projects" "var_usages"}))))
 
 (defn insert-project
   "Insert a new project named `project` into `db` located at url `location`."
@@ -336,6 +343,11 @@
   (search-usages-count  (db) "integrant.core/ref" nil)
   (time (search-namespaces (db) "clojure.core/defn" "-1"))
 
+  (with-open [con (jdbc/get-connection (db))]
+    (-> con
+        .getMetaData
+        (.getTables nil nil nil (into-array ["TABLE" "VIEW"]))
+        (rs/datafiable-result-set jdbc/unqualified-snake-kebab-opts)))
   
   
   (schema-exists (db))

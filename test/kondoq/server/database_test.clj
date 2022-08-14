@@ -86,3 +86,7 @@
     (is test)
     (is (= "kondoq-test" ns))
     (.delete (java.io.File. filename))))
+
+(deftest should-see-if-schema-exists
+  (is (db/schema-exists *db*)))
+
