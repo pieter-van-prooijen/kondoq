@@ -4,10 +4,11 @@ A [re-frame](https://github.com/day8/re-frame) / Integrant / jdbc-next applicati
 show var usages in public clojure-(script) projects.
 
 TODO:
-- manifest props don't show on prod
-- etag matching on github doesn't work with oauth tokens, as the token differs for each upload? Yes: the response has a
+- etag matching on github doesn't work with oauth tokens, as the token differs for each upload?
+  Yes: the response has a
   Vary header which contains "Authorization" when making an authorized request.
-
+  
+  
 - style guide compliance, consistent naming of "fetch-", "search-" etc. (server done, do client next)
 - more tests
 - give preference to "well-liked" repositories in results? (e.g. sort by number of github stars)

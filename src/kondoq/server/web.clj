@@ -82,8 +82,8 @@
     (edn-response body)))
 
 ;; Assumes running from an uberjar with only a single manifest on the classpath.
-(defn- fetch-uberjar-manifest [ns]
-  (when-let [clazz (try (Class/forName (name ns))
+(defn- fetch-uberjar-manifest []
+  (when-let [clazz (try (Class/forName "kondoq.server.core") ; this ns has a gen-class
                         (catch ClassNotFoundException _))]
     (->> (str "jar:" (-> clazz
                          .getProtectionDomain
@@ -99,7 +99,7 @@
 ;; The GET to /projects loads both the project list and the manifest.
 (defn- fetch-projects-handler [{:keys [db]}]
   (let [projects (db/search-projects db)
-        manifest (fetch-uberjar-manifest 'kondoq.server)
+        manifest (fetch-uberjar-manifest)
         config-path (:path (util/read-config))]
     (edn-response {:projects projects :manifest manifest :config-path config-path})))
 
@@ -207,5 +207,6 @@
   (clj-http.client/get "http://localhost:8280/projects")
 
   (:bla nil)
-  (fetch-uberjar-manifest 'kondoq.server)
+  (Class/forName "kondoq.server.web$fetch_uberjar_manifest")
+  (fetch-uberjar-manifest)
   )
