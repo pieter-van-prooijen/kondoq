@@ -68,6 +68,7 @@
      (when namespace
        [:td {:rowSpan namespace-rs}
         [usage-expandable namespace]])
+     ;; usage should always be present and have a rowSpan of 1
      [:td
       [usage-code usage]]]))
 

@@ -28,7 +28,7 @@
         adding-project (.get search-params "adding-project")]
     (if adding-project
       (do
-        ;; reset the app url so a reload won't invoke the adding-project again.
+        ;; reset the app url so a reload won't jump to the adding-project state again.
         (. js/history pushState {} "" href-without-search)
         (re-frame/dispatch-sync [::events/initialize-with-adding-project adding-project]))
       (re-frame/dispatch-sync [::events/initialize-db])))

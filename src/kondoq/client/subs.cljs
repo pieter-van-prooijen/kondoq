@@ -4,8 +4,8 @@
    [kondoq.client.util :refer [usage-key]]
    [re-frame.core :refer [reg-sub]]))
 
-;; change the last coll in colls to a seq of [[x count] nil]
-(defn add-count-to-last-coll
+;; Change the last collection of xs in colls to a seq of [[x count] nil nil ...].
+(defn- add-count-to-last-coll
   ([colls]
    (let [bl (butlast colls)
          l (last colls)
@@ -15,71 +15,76 @@
                       [])]
      (concat bl [with-count]))))
 
-;; add x to the last collection in colls, creating it if needed
-(defn add-to-last-coll [x colls]
+;; Add x to the last collection in colls.
+(defn- add-to-last-coll [x colls]
   (let [bl (butlast colls)
         l (last colls)]
     (concat bl [(concat l [x])])))
 
-;; add x in a new collection added to colls
-(defn add-new-coll [x colls]
+;; Add x in a new collection added to colls.
+(defn- add-new-coll [x colls]
   (concat colls [[x]]))
 
-;; update the collection under key in result for the given value change
-(defn update-coll-under-key [m key last-value current-value]
+;; Update the collection under key in m for the given value change.
+(defn- update-coll-under-key [m key last-value current-value]
   (if (or (nil? last-value) (= last-value current-value))
-    (update m key (partial add-to-last-coll current-value))
+    ;; No change, just add it.
+    (update m key #(add-to-last-coll current-value %))
+    ;; Value change, convert the previous list of column values to a count + nils
     (-> m
         (update key add-count-to-last-coll)
-        (update key (partial add-new-coll current-value)))))
+        (update key #(add-new-coll current-value %)))))
 
-(defn usage-location [usage namespace-location]
-  (str namespace-location "#L" (:line-no usage)))
+(defn- usage-location [usage namespace-location]
+  (str namespace-location "#L" (:line-no usage))) ; GitHub line fragment.
 
-(defn add-usage [{:keys [projects namespaces skip] :as result}
-                 usage
-                 expanded
-                 indexed-namespaces]
+;; Reducing function adding a single usage.
+(defn- add-usage [{:keys [projects namespaces usages skip] :as result}
+                  usage
+                  expanded
+                  symbol->namespace]
   (let [last-project (first (last projects))
         last-namespace (first (last namespaces))
+        last-usage (first (last usages))
         current-namespace (:used-in-ns usage)
-        current-project (get-in indexed-namespaces
+        current-project (get-in symbol->namespace
                                 [current-namespace :project]
                                 (str current-namespace "-UNKNOWN"))
-        current-location (get-in indexed-namespaces [current-namespace :location])
-        ;; add the location to the usage to construct the source file link
-        updated-usage (assoc usage :location
-                             (usage-location usage current-location))]
+        current-location (get-in symbol->namespace [current-namespace :location])
+        ;; Add the location to the usage to construct the source file link.
+        usage-with-location (assoc usage :location
+                                   (usage-location usage current-location))]
 
     (if (or (skip current-project) (skip current-namespace))
       result
       (-> result
           (update-coll-under-key :projects last-project current-project)
           (update-coll-under-key :namespaces last-namespace current-namespace)
-          (update :usages (partial add-to-last-coll [updated-usage 1]))
-          ;; skip any not-expanded project or namespace in the next iteration
-          (update :skip (fn [skip] (reduce (fn [r x]
-                                             (if-not (expanded x)
-                                               (conj r x)
-                                               r))
-                                           skip
-                                           [current-project current-namespace])))))))
+          (update-coll-under-key :usages last-usage usage-with-location)
+          ;; Skip any not-expanded project or namespace in the next iteration.
+          (update :skip (fn [old-skip] (reduce (fn [r x]
+                                                 (if-not (expanded x)
+                                                   (conj r x)
+                                                   r))
+                                               old-skip
+                                               [current-project current-namespace])))))))
 
-;; rows for the result table, each column is either [x row-span] or nil
-;; e.g
-;; ([["re-frame" 3]
-;;   [re-frame.core 2]
-;;   [{:symbol inc, :ns re-frame.core, :line-no 42, :line "(inc x)"} 1]]
-;;  [nil
-;;   nil
-;;   [{:symbol inc, :ns re-frame.core, :line-no 43, :line "(inc y)"} 1]])
+;; Transform the list of usages in a list of rows suitable for <table> rendering:
+;; Each row has three columns, for project, namespace and usage.
+;; Each column is either [x row-span] (a non-empty cell) or nil (an empty cell in the table,
+;; covered by a rowspan in one of cells above it).
+;; Example:
+;; ([["re-frame" 2] [re-frame.core 2] [{:symbol inc, :ns re-frame.core, :line-no 42, :line "(inc x)"} 1]]
+;;  [nil            nil               [{:symbol inc, :ns re-frame.core, :line-no 43, :line "(inc y)"} 1]])
 ;;
-(defn usages-as-rows [expanded indexed-namespaces usages]
-  (-> (reduce (fn [r usage] (add-usage r usage expanded indexed-namespaces))
+(defn- usages-as-rows [usages expanded symbol->namespace]
+  (-> (reduce (fn [r usage]
+                (add-usage r usage expanded symbol->namespace))
               {:projects [] :namespaces [] :usages [] :skip #{}}
               usages)
       (update :projects add-count-to-last-coll)
       (update :namespaces add-count-to-last-coll)
+      (update :usages add-count-to-last-coll)
       (as-> $
           (map vector
                (apply concat (:projects $))
@@ -87,9 +92,9 @@
                (apply concat (:usages $))))))
 
 (reg-sub
- ::usages
- (fn [db _]
-   (:usages db)))
+::usages
+(fn [db _]
+  (:usages db)))
 
 (reg-sub
  ::usages-count
@@ -97,14 +102,9 @@
    (:usages-count db 0)))
 
 (reg-sub
- ::symbol
+ ::expanded
  (fn [db _]
-   (:symbol db)))
-
-(reg-sub
- ::arity
- (fn [db _]
-   (:arity db)))
+   (:expanded db)))
 
 (reg-sub
  ::namespaces
@@ -112,10 +112,18 @@
    (:namespaces db)))
 
 (reg-sub
- ::indexed-namespaces
+ ::symbol->namespace
  :<- [::namespaces]
  (fn [namespaces _]
-   (reduce (fn [r ns] (assoc r (:ns ns) ns)) {} namespaces)))
+   (zipmap (map :ns namespaces) namespaces)))
+
+(reg-sub
+ ::usages-rows
+ :<- [::usages]
+ :<- [::expanded]
+ :<- [::symbol->namespace]
+ (fn [[usages expanded symbol->namespace] _]
+   (usages-as-rows usages expanded symbol->namespace)))
 
 (reg-sub
  ::projects
@@ -123,19 +131,14 @@
    (:projects db)))
 
 (reg-sub
- ::manifest
- (fn [db _]
-   (:manifest db)))
+::manifest
+(fn [db _]
+  (:manifest db)))
 
 (reg-sub
  ::config-path
  (fn [db _]
    (:config-path db)))
-
-(reg-sub
- ::expanded
- (fn [db _]
-   (:expanded db)))
 
 (reg-sub
  ::symbol-counts
@@ -147,84 +150,74 @@
  (fn [db _]
    (:symbol-counts-q db)))
 
-;; convert the usages into a sequence of rows for display in table
+(reg-sub
+ ::symbol
+ (fn [db _]
+   (:symbol db)))
 
 (reg-sub
- ::usages-rows
- :<- [::usages]
- :<- [::indexed-namespaces]
- :<- [::expanded]
- (fn [[usages indexed-namespaces expanded] _]
-   (usages-as-rows expanded indexed-namespaces usages)))
+ ::arity
+ (fn [db _]
+   (:arity db)))
 
-;; keep track of generic child -> parent relationships for proper ui display
+;; Keep track of generic child -> parent relationships for use in the views.
 (reg-sub
  ::parents
  :<- [::usages]
- :<- [::indexed-namespaces]
- (fn [[usages indexed-namespaces] _]
+ :<- [::symbol->namespace]
+ (fn [[usages symbol->namespace] _]
    (-> {}
        (into (map (fn [o]
                     [(usage-key o) (:ns o)])
                   usages))
        (into (map (fn [[ns {project :project}]]
                     [ns project])
-                  indexed-namespaces)))))
+                  symbol->namespace)))))
 
 (reg-sub
- ::active-panel
- (fn [db _]
-   (:active-panel db)))
+::active-panel
+(fn [db _]
+  (:active-panel db)))
 
 ;;
-;; Pagination
+;; Pagination.
 (reg-sub
- ::page
- (fn [db _]
-   (:page db 0)))
+::page
+(fn [db _]
+  (:page db 0)))
 
 (reg-sub
- ::page-size
- (fn [db _]
-   (:page-size db 20)))
+::page-size
+(fn [db _]
+  (:page-size db 20)))
 
 (reg-sub
- ::page-count
- :<- [::usages-count]
- :<- [::page-size]
- (fn [[usages-count page-size] _]
-   (math/ceil (/ usages-count page-size))))
+::page-count
+:<- [::usages-count]
+:<- [::page-size]
+(fn [[usages-count page-size] _]
+  (math/ceil (/ usages-count page-size))))
 
 ;;
-;; Projects tab subs
+;; Projects tab subs.
 
 (reg-sub
- ::projects-state
- (fn [db _]
-   (:projects-state db :showing-projects)))
+::projects-state
+(fn [db _]
+  (:projects-state db :showing-projects)))
 
 (reg-sub
- ::current-project
- (fn [db _]
-   (:current-project db {})))
+::current-project
+(fn [db _]
+  (:current-project db {})))
 
 ;;
-;; Last seen http failure
+;; Last seen http failure.
 (reg-sub
  ::http-failure
- (fn [db _] 
+ (fn [db _]
    (:http-failure db)))
 
 (comment
-  (require 'kondoq.db)
-  (add-to-last-coll :a [[:c] [:b]]) ; ([:c] (:b :a))
-  (add-to-last-coll :a [[]]) ; ((:a))
-
-  (add-count-to-last-coll [])
-
-  (math/ceil 0.0)
-
-  (usages-as-rows #{"re-frame"} (:namespaces kondoq.db/default-db) (:usages kondoq.db/default-db))
-
 
   )
