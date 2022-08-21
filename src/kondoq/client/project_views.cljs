@@ -8,7 +8,7 @@
   (.preventDefault e)
   (>evt [::project-events/show-enter-project-url]))
 
-;; generic cancel
+;; Generic cancel function.
 (defn cancel-projects [e]
   (.preventDefault e)
   (>evt [::project-events/cancel-projects]))
@@ -35,7 +35,6 @@
          [:div.control
           [:input.input {:id "project-url"
                          :name "project-url"
-                         :value (:location current-project)
                          :type "text"}]]
          [:p.help "Project URL should have the form https://github.com/<user>/<project>"]]
 
@@ -44,7 +43,7 @@
          [:div.control
           [:input.input {:id "token"
                          :name "token"
-                         :type "text"}]] ;; should really be password?
+                         :type "text"}]] ;; Should really be password field?
          [:p.help {:dangerouslySetInnerHTML
                    {:__html
                     (str "Without authorization, the GitHub API is limited to 200 requests/h. <br>"

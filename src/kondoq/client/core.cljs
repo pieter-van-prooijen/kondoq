@@ -1,6 +1,8 @@
 (ns kondoq.client.core
   (:require [clojure.string :as string]
             [kondoq.client.config :as config]
+            [kondoq.client.db :as db]
+            [kondoq.client.effects]
             [kondoq.client.events :as events]
             [kondoq.client.views :as views]
             [re-frame.core :as re-frame]
@@ -8,7 +10,8 @@
 
 (defn dev-setup []
   (when config/debug?
-    (println "dev mode")))
+    (println "dev mode")
+    (re-frame/reg-global-interceptor db/app-db-validator)))
 
 ;; called by shadow-cljs after reloading a file
 (defn ^:dev/after-load mount-root []

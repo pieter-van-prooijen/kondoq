@@ -6,20 +6,20 @@
             [kondoq.client.subs :as subs]
             [kondoq.client.util :refer [<sub >evt usage-key add-line-markup] :as util]))
 
-(defn ancestors-expanded [k parents expanded]
-  (if-let [parent (parents k)]
+(defn ancestors-expanded [k child->parent expanded]
+  (if-let [parent (child->parent k)]
     (and (expanded parent)
-         (ancestors-expanded parent parents expanded))
+         (ancestors-expanded parent child->parent expanded))
     true))
 
 (defn usage-expandable [x]
   (let [expanded (<sub [::subs/expanded])
         is-expanded (expanded x)
-        parents (<sub [::subs/parents])
-        ancestors-expanded (ancestors-expanded x parents expanded)]
+        child->parent (<sub [::subs/child->parent])
+        ancestors-expanded (ancestors-expanded x child->parent expanded)]
     [:span.tag.is-size-6 {:on-click (fn [e]
                                       (.preventDefault e)
-                                      (>evt [::events/toggle-expanded [x parents]]))}
+                                      (>evt [::events/toggle-expanded [x child->parent]]))}
      x
      (if (and is-expanded ancestors-expanded)
        [:button.delete]
@@ -47,13 +47,13 @@
   (let [key (usage-key usage)
         expanded (<sub [::subs/expanded])
         is-expanded (expanded key)
-        parents (<sub [::subs/parents])
-        ancestors-expanded (ancestors-expanded key parents expanded)
+        child->parent (<sub [::subs/child->parent])
+        ancestors-expanded (ancestors-expanded key child->parent expanded)
         is-collapsed (or (not is-expanded) (not ancestors-expanded))]
     [:<>
      [:div {:on-click (fn [e]
                         (.preventDefault e)
-                        (>evt [::events/toggle-expanded [key parents]]))}
+                        (>evt [::events/toggle-expanded [key child->parent]]))}
       [code-fragment line context is-collapsed start-context line-no]]
      (when-not is-collapsed
        [:a.tag.is-link {:href location :target "_blank"} location])]))
@@ -85,7 +85,7 @@
     (invoke-fetch symbol arity e)))
 
 (defn symbol-counts-row [substr {:keys [symbol count arity]}]
-  (let [[before middle after] (util/split-with-substr symbol substr)]
+  (let [[before middle after] (util/split-with-substr (str symbol) substr)]
     ^{:key (str symbol "-" arity)}
     [:tr.symbol-counts-row.is-clickable {:on-click
                                          (partial invoke-fetch symbol arity)
@@ -160,7 +160,7 @@
         [:h2.subtitle
          [:span.has-text-weight-bold usages-count]
          " usages of "
-         [:span.has-text-weight-bold symbol]
+         [:span.has-text-weight-bold (str symbol)]
          " "
          (condp = arity
            nil "(arity n/a)"

@@ -293,8 +293,10 @@
                        :limit limit}
               :pretty true})]
     (->> (jdbc-sql/query db sql)
+         (map #(update % :symbol symbol))
          (partition-by :symbol)
-         ;; insert a pseudo entry for all arities in the list
+         ;; Insert a pseudo entry for all arities in the list if there is more
+         ;; than one arity for a var.
          (mapcat (fn [symbols]
                    (if (> (count symbols) 1)
                      (let [{:keys [symbol all-arities-count]} (first symbols)]

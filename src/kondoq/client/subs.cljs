@@ -162,7 +162,7 @@
 
 ;; Keep track of generic child -> parent relationships for use in the views.
 (reg-sub
- ::parents
+ ::child->parent
  :<- [::usages]
  :<- [::symbol->namespace]
  (fn [[usages symbol->namespace] _]
@@ -182,29 +182,28 @@
 ;;
 ;; Pagination.
 (reg-sub
-::page
-(fn [db _]
-  (:page db 0)))
+ ::page
+ (fn [db _]
+   (get-in db [:pagination :page] 0)))
 
 (reg-sub
-::page-size
-(fn [db _]
-  (:page-size db 20)))
+ ::page-size
+ (fn [db _]
+   (get-in db [:pagination :page-size] 20)))
 
 (reg-sub
-::page-count
-:<- [::usages-count]
-:<- [::page-size]
-(fn [[usages-count page-size] _]
-  (math/ceil (/ usages-count page-size))))
+ ::page-count
+ :<- [::usages-count]
+ :<- [::page-size]
+ (fn [[usages-count page-size] _]
+   (math/ceil (/ usages-count page-size))))
 
 ;;
 ;; Projects tab subs.
-
 (reg-sub
-::projects-state
-(fn [db _]
-  (:projects-state db :showing-projects)))
+ ::projects-state
+ (fn [db _]
+   (:projects-state db :showing-projects)))
 
 (reg-sub
 ::current-project
