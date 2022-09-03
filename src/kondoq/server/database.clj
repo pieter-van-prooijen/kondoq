@@ -19,9 +19,9 @@
                :password "kondoq-password"}})
 
 ;; HikariCP's connectionInitSql only allows a single statement to be executed?
-;; Wrap the Connectable to set multiple pragma's on a new connection.
-;; This means the init is done for every jdbc/execute! etc., but that can't
-;; be helped for now.
+;; Wrap the Connectable to set multiple pragma's on connection retrieval. This
+;; means the init is done for every jdbc/execute! etc., but using the
+;; journal_mode and other pragmas is more important.
 (defrecord InitSqlite [connectable]
   java.io.Closeable
   (close [this]
@@ -50,8 +50,6 @@
 
 ;; Using a connection pool keeps the sqlite database file open between calls to
 ;; prevent reparsing the schema etc. on each database action.
-;; CHECKME: causes problems with open connections not seeing changes made to the
-;; database file in other connections (e.g. in delete/create schema)?
 (defmethod ig/init-key :kondoq/db [_ config]
   (let [pool (-> (jdbc-connection/->pool HikariDataSource config)
                  (->InitSqlite)
@@ -388,7 +386,7 @@
   (schema-exists (db))
 
   (jdbc/get-connection (db))
-  (jdbc/execute! (jdbc/get-connection (db)) ["pragma synchronous"])
+  (jdbc/execute! (jdbc/get-connection (db)) ["pragma journal_mode"])
   (jdbc/execute! (db) [(str "PRAGMA journal_mode = WAL, foreign_keys = ON; "
                             "PRAGMA foreign_keys = ON; "
                             "PRAGMA cache_size = 10000;" ; in 4k pages

@@ -5,13 +5,14 @@ show var usages in public clojure-(script) projects.
 
 TODO:
 - etag matching on github doesn't work with oauth tokens, as the token differs for each upload?
-  Yes: the response has a
-  Vary header which contains "Authorization" when making an authorized request.
+  Yes: the response has a Vary header which contains "Authorization" when making an authorized request.
 
-- slow type-ahead for some queries ("in", "inc" gives "lint!" sometimes in the drop down list)
+- slow type-ahead for some queries ("in", "inc" gives "lint!" sometimes in the drop down list, third keypress is
+  not handled or arrives *before* the result of the second one (if the server is slow)?)
+
 - style guide compliance, consistent naming of "fetch-", "search-" etc. (server done, do client next)
 - more tests
-- give preference to "well-liked" repositories in results? (e.g. sort by number of github stars)
+- give preference to "well-liked" repositories in results? (e.g. retieve and sort by number of github stars)
 - split in read/write databases (sqlite: file:bla.sqlite?mode=ro ) for later move to single writer?
   (note that read-only replicas in litestream are not working and wil be replaced with new implementation)
 - strip leading whitespace when code context is collapsed?
@@ -26,12 +27,10 @@ Assumes a working node / npm and clojure-cli 11.
 
 install: shadow-cljs via npm
 
-sqlite database is in data/kondoq.sqlite
-
 Compiling the shadow-cljs build:
 $ npx shadow-cljs compile app
 
-Create the database schema:
+Create the database schema in data/kondoq.sqlite:
 $ clj -X kondoq.server/init-db
 
 Starting the api and html/js file server:
@@ -42,9 +41,27 @@ Visit http://localhost:3002/index.html
 Add a github project via the projects tab and search using the search tab. After typing three characters a popup
 list appears with potential matches, selectable by mouse.
 
-## Development with CIDER
+## Development with CIDER (v1.5.0+)
 
-Problem: switching between the clj / cljs repl only works using cider sessions
+See the .dir-locals.el file in the project root which configures the various cider parameters. You might need to
+mark some variables as "safe to use" upon the first load.
+
+To get both a clj and cljs repl with proper switching per source file use the following procedure:
+
+cider-jack-in-clj  (C-c M-s or C-c C-x j j), use "clojure-cli" as the command.
+
+open the dev/user.clj file and execute the integrant (go) command (e.g. using C-x C-e), this will start the backend
+with the "dev" profile in deps.edn. Logging is on stdout in the cider repl buffer.
+
+cider-jack-in-cljs (C-c M-S or C- C-x j s) (note the upper-case S) , say "y" to the "are you sure" question and use
+"shadow-cljs" as the command to run. This will start shadow-cljs on the "app" build.
+
+Open or reload the app on http://localhost:8280 , the cljs repl should now work.
+
+Cider will merge the two repls in a single session because of the cider-merge-sessions variable has the 'project
+value. This single session enables the correct repl switching behaviour.
+See also https://docs.cider.mx/cider/usage/managing_connections.html#adding-repls-to-a-session and the
+.dir-locals.el file in the project.
 
 ## Production Build / Install
 
