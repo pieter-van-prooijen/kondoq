@@ -7,6 +7,7 @@
             [integrant.core :as ig]
             [next.jdbc :as jdbc]
             [next.jdbc.connection :as jdbc-connection]
+            [next.jdbc.protocols :as jdbc-protocols]
             [next.jdbc.result-set :as rs]
             [next.jdbc.sql :as jdbc-sql])
   (:import  com.zaxxer.hikari.HikariDataSource))
@@ -15,10 +16,37 @@
   {:kondoq/db {:dbtype "sqlite"
                :dbname "data/kondoq.sqlite"
                :username "kondoq-user" ; hikari uses username instead of user
-               :password "kondoq-password"
-               :connectionInitSql (str "PRAGMA foreign_keys = ON;"
-                                       "PRAGMA cache_size = 10000;" ; in 4k pages
-                                       "PRAGMA journal_mode = WAL;")}})
+               :password "kondoq-password"}})
+
+;; HikariCP's connectionInitSql only allows a single statement to be executed?
+;; Wrap the Connectable to set multiple pragma's on a new connection.
+;; This means the init is done for every jdbc/execute! etc., but that can't
+;; be helped for now.
+(defrecord InitSqlite [connectable]
+  java.io.Closeable
+  (close [this]
+    (.close (:connectable this))))
+
+(extend-protocol jdbc-protocols/Connectable
+  InitSqlite
+  (get-connection [this opts]
+    (let [conn (jdbc-protocols/get-connection (:connectable this) opts)]
+      (jdbc/execute! conn ["PRAGMA journal_mode = WAL"])
+      (jdbc/execute! conn ["PRAGMA foreign_keys = ON"])
+      (jdbc/execute! conn ["PRAGMA cache_size = 10000"])
+      (jdbc/execute! conn ["PRAGMA synchronous = NORMAL"])
+      (jdbc/execute! conn ["PRAGMA optimize"])
+      conn)))
+
+(extend-protocol jdbc-protocols/Sourceable
+  InitSqlite
+  (get-datasource [this]
+    (jdbc-protocols/get-datasource (:connectable this))))
+
+(defn- pragma [conn k]
+  (-> conn
+      (jdbc/execute! [(str "PRAGMA " (name k))])
+      (get-in [0 k])))
 
 ;; Using a connection pool keeps the sqlite database file open between calls to
 ;; prevent reparsing the schema etc. on each database action.
@@ -26,13 +54,19 @@
 ;; database file in other connections (e.g. in delete/create schema)?
 (defmethod ig/init-key :kondoq/db [_ config]
   (let [pool (-> (jdbc-connection/->pool HikariDataSource config)
+                 (->InitSqlite)
                  (jdbc/with-options jdbc/unqualified-snake-kebab-opts))]
-    (.close (jdbc/get-connection pool)) ; open a test connection
-    pool))
+    (with-open [conn (jdbc/get-connection pool)]
+      (log/info (str "sqlite settings: "
+                     (->> [:foreign_keys :cache_size :journal_mode :synchronous :optimize]
+                          (map #(vector (name %) (pragma conn %)))
+                          (string/join))))
+      pool)))
 
 (defmethod ig/halt-key! :kondoq/db [_ pool]
   ;; CHECKME: does getting the connection like this rely on next.jdbc internals?
   ;; invoking .close on a next.jdbc connection itself doesn't work?
+  ;; Double retrieval needed because of 
   (let [connectable (:connectable pool)]
     (log/info "closing connection pool" connectable)
     (.close connectable)))
@@ -350,11 +384,15 @@
         .getMetaData
         (.getTables nil nil nil (into-array ["TABLE" "VIEW"]))
         (rs/datafiable-result-set jdbc/unqualified-snake-kebab-opts)))
-  
-  
+
   (schema-exists (db))
 
-  (jdbc/execute! (db) ["pragma cache_size;"])
+  (jdbc/get-connection (db))
+  (jdbc/execute! (jdbc/get-connection (db)) ["pragma synchronous"])
+  (jdbc/execute! (db) [(str "PRAGMA journal_mode = WAL, foreign_keys = ON; "
+                            "PRAGMA foreign_keys = ON; "
+                            "PRAGMA cache_size = 10000;" ; in 4k pages
+                            )])
   (delete-schema (db))
   (create-schema (db))
   )
