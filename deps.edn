@@ -41,7 +41,7 @@
 
                 ;; duplicate the shadow-cljs.edn deps here
                 ;; so the embedded shadow-cljs server/compiler works
-                ;; (the embedded server gives proper
+                ;; (using the embedded server gives proper
                 ;; clojure / clojurescript switching in cider)
                 metosin/malli {:mvn/version "0.8.9"}
                 re-frame/re-frame {:mvn/version "1.2.0"}
@@ -63,7 +63,7 @@
    :exec-fn cognitect.test-runner.api/test}
 
   ;; clj -X:deps tree for all deps
-  ;; clojure -M:outdated for old dependencies
+  ;; clj -M:outdated for old dependencies
   :outdated {:extra-deps {com.github.liquidz/antq {:mvn/version "RELEASE"}}
              :main-opts ["-m" "antq.core"]}}}
 

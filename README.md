@@ -7,8 +7,8 @@ TODO:
 - etag matching on github doesn't work with oauth tokens, as the token differs for each upload?
   Yes: the response has a
   Vary header which contains "Authorization" when making an authorized request.
-  
-  
+
+- slow type-ahead for some queries ("in", "inc" gives "lint!" sometimes in the drop down list)
 - style guide compliance, consistent naming of "fetch-", "search-" etc. (server done, do client next)
 - more tests
 - give preference to "well-liked" repositories in results? (e.g. sort by number of github stars)
@@ -41,6 +41,10 @@ Visit http://localhost:3002/index.html
 
 Add a github project via the projects tab and search using the search tab. After typing three characters a popup
 list appears with potential matches, selectable by mouse.
+
+## Development with CIDER
+
+Problem: switching between the clj / cljs repl only works using cider sessions
 
 ## Production Build / Install
 

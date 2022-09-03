@@ -14,7 +14,8 @@
   (reset-all)
 
   (:adapter/jetty integrant.repl.state/system)
-  ;; start the shadow cljs build, connect using cider-connect-sibling-cljs (C-c C-x s s) to
+  ;; start the shadow cljs build below and then connect using
+  ;; cider-connect-sibling-cljs (C-c C-x s s) to
   ;; get proper repl context switching between clj and cljs
   ;; see .dir-locals.el and the dev dependencies how to make this work.
   (shadow.cljs.devtools.server/start!)
