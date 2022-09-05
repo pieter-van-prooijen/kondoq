@@ -1,12 +1,8 @@
 (ns kondoq.server.project-status
   "Manage temporary project status properties, while a project is being added.
   In memory, works because of single writer."
-  (:require [clj-http.client :as client]
-            [jsonista.core :as json]
-            [lambdaisland.uri :refer [uri assoc-query]]
-            [kondoq.server.util :as util]
-            [clojure.tools.logging :as log]
-            [clojure.string :as string]))
+  (:require [jsonista.core :as json]
+            [kondoq.server.util :as util]))
 
 (def current-projects (atom {}))
 

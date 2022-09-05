@@ -4,7 +4,8 @@
   (cider-shadow-default-options . "app")
   (cider-shadow-watched-builds . ("app"))
 
-  (cider-clojure-cli-aliases . ("dev"))
+  ;; It's a list in the docs, but gives an error if not a string?
+  (cider-clojure-cli-aliases . "dev")
 
   ;; Merge different nrepl sessions (clj and cljs) automatically based on
   ;; the host, so starting a separate cider-cljs jack-in works with repl

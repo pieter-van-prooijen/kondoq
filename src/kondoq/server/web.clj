@@ -104,11 +104,13 @@
     (edn-response {:projects projects :manifest manifest :config-path config-path})))
 
 (defn- fetch-symbol-counts-handler [{:keys [db params]}]
-  (let [q (:q params)
+  (let [{:keys [q request-no]} params
         symbol-counts (if (>= (count q) 2)
                         (db/search-symbol-counts db (str "%" q "%") 10)
                         [])]
-    (edn-response {:symbol-counts-q q :symbol-counts symbol-counts})))
+    (edn-response {:symbol-counts-q q
+                   :symbol-counts symbol-counts
+                   :request-no request-no})))
 
 (defn- add-project [db etag-db project-url token]
   (let [project-future (future (github/upsert-project db etag-db project-url token))]

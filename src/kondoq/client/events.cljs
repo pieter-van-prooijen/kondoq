@@ -83,19 +83,30 @@
                                        (into (map :project namespaces))
                                        (into (map :ns namespaces))))))))
 
+;; When fetching the symbol counts, keep track of the request number
+;; (which is echoed by the backend), so slow responses for early requests
+;; (e.g. when typing the first two letters, which take more time to search)
+;; won't overwrite faster (earlier) responses
+;; to later requests (when typing three or more letters).
 (re-frame/reg-event-fx
  ::fetch-symbol-counts
- (fn-traced [_ [_ [q]]]
-            {:fx [[:http {:url (goog.uri.utils/appendParam "/symbol-counts" "q" q)
-                          :on-success ::process-symbol-counts}]]}))
+ (fn-traced [{:keys [db]} [_ [q]]]
+            (let [request-no (inc (:symbol-counts-request-no db 0))]
+              {:fx [[:http {:url (-> "/symbol-counts"
+                                     (goog.uri.utils/appendParam  "q" q )
+                                     (goog.uri.utils/appendParam  "request-no" request-no))
+                            :on-success ::process-symbol-counts}]]
+               :db (assoc db :symbol-counts-request-no request-no)})))
 
 (re-frame/reg-event-db
  ::process-symbol-counts
  (fn-traced [db [_ response]]
-            (let [{:keys [symbol-counts-q symbol-counts]} response]
-              (-> db
-                  (assoc :symbol-counts-q symbol-counts-q)
-                  (assoc :symbol-counts symbol-counts)))))
+            (let [{:keys [symbol-counts-q symbol-counts request-no]} response]
+              (if (>= request-no (:symbol-counts-request-no db 0))
+                (-> db
+                    (assoc :symbol-counts-q symbol-counts-q)
+                    (assoc :symbol-counts symbol-counts))
+                db)))) ; out-of-order request
 
 (re-frame/reg-event-db
  ::set-active-panel

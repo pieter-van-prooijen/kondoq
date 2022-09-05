@@ -69,6 +69,7 @@
              ;; Type-ahead results.
              [:symbol-counts-q {:optional true} :string]
              [:symbol-counts [:sequential :symbol-count]]
+             [:symbol-counts-request-no {:optional true} :int]
              ;; Backend information.
              [:manifest [:maybe [:map]]]
              [:config-path :not-blank]
