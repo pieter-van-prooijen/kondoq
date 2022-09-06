@@ -3,13 +3,13 @@
             [goog.uri.utils]
             [re-frame.core :as re-frame]))
 
-;; Adding project states:
+;; Adding a project has the following states:
 ;; - showing-projects
 ;; - entering-project-url (and a token)
 ;; - adding-project (with feedback about the loaded namespaces etc.)
 ;; - error-adding-project (something happened when fetching)
 
-;; Fetch a list of all the projects and some application info
+;; Fetch a list of all the projects and some application info.
 (re-frame/reg-event-fx
  ::fetch-projects
  (fn-traced [_ [_ _]]
@@ -92,14 +92,14 @@
                                                             (js/encodeURIComponent location))
                             :on-success ::process-project})]]}))
 
-;; answer the effect map for a given state of the project
+;; Answer the effect map for a given state of the project.
 (defn process-project [db {:keys [ns-count ns-total error] :as project}]
   (cond
-    ;; an error happened, user should cancel the upload after reading
+    ;; An error happened, user should cancel the upload after reading.
     error
     {:db (assoc db :projects-state :error-adding-project
                 :current-project project)}
-    ;; finished uploading
+    ;; Finished uploading.
     (or (empty? project) (= ns-total ns-count))
     {:db (-> db
              (assoc :projects-state :showing-projects)

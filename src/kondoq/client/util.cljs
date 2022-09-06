@@ -2,22 +2,23 @@
   (:require [clojure.string :as string]
             [re-frame.core]))
 
-;; Various utility functions for re-frame
+;; Various utility functions for re-frame.
 
 (def intl-number-format (js/Intl.NumberFormat.))
 (defn format-number [x]
   (.format intl-number-format x))
 
-;; Shortcuts from the re-frame documentation
+;; Shortcuts from the re-frame documentation.
 (def <sub (comp deref re-frame.core/subscribe))
 
 (def >evt re-frame.core/dispatch)
 
-(defn usage-key [{:keys [ns line-no]}]
-  (str ns "-" line-no))
+;; Generate a unique key for a var usage.
+(defn usage-key [{:keys [ns line-no column-no]}]
+  (str ns "-" line-no "-" column-no))
 
-;; Add (zero based) line numbers and the highlight the current line
-;; Assumes highlight.js leaves the line structure intact after processing
+;; Add (zero based) line numbers and the highlight the current line.
+;; Assumes highlight.js leaves the line structure intact after processing.
 (defn add-line-markup [highlighted-html begin current]
   (->> (string/split highlighted-html #"[\n\r]")
        (map  (fn [line-no line]
@@ -28,7 +29,7 @@
              (range begin js/Number.MAX_SAFE_INTEGER))
        (string/join "\n")))
 
-;; Split a string in three parts using a substring: before, substring and after
+;; Split a string in three parts using a substring: before, substring and after.
 (defn split-with-substr [s substr]
   (let [re (re-pattern (str "^(.*)(" substr ")(.*)$"))
         [all before middle after] (re-find re s)]

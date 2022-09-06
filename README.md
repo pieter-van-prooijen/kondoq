@@ -1,42 +1,70 @@
 # kondoq
 
-A [re-frame](https://github.com/day8/re-frame) / Integrant / jdbc-next application designed to
-show var usages in public clojure-(script) projects.
+Using the clj-kondo analysis tool, scan github open source projects for var usages and store these in an sqlite
+ database.
+Expose an API and corresponding webapp for querying this database, together with a project upload section. 
+Shows the var usage (e.g. function invocation or reference) in its containing defn.
 
-TODO:
+## TODO:
+- How does the UI and performance hold up with a large number of projects (> 10)?. 
+- give preference to "well-liked" repositories in results? (e.g. retieve and sort by the number of github stars)
 - etag matching on github doesn't work with oauth tokens, as the token differs for each upload?
-  Yes: the response has a Vary header which contains "Authorization" when making an authorized request.
+  Yes: the response has a Vary header which contains "Authorization" when making an authorized request. This means
+  cached content won't help reduce the number of GitHub api requests unless the using fixed application tokens.
 
-- slow type-ahead for some queries ("in", "inc" gives "lint!" sometimes in the drop down list, third keypress is
-  not handled or arrives *before* the result of the second one (if the server is slow)?)
+- Does Hikari allows a way to execute multiple pragmas upon connection creation? Needs a complicated work-around at
+  the moment to initialize sqlite correctly. Perhaps sqlite/xerial needs a different approach to keep the
+  connection open between different jdbc calls.
 
-- style guide compliance, consistent naming of "fetch-", "search-" etc. (server done, do client next)
+- clojure style guide compliance, consistent naming of "fetch-", "search-" etc. (server done, do client next)
 - more tests
-- give preference to "well-liked" repositories in results? (e.g. retieve and sort by number of github stars)
-- split in read/write databases (sqlite: file:bla.sqlite?mode=ro ) for later move to single writer?
+- split in read/write databases (sqlite: file:bla.sqlite?mode=ro ) for later move to single writer with multiple
+  reader instances?
   (note that read-only replicas in litestream are not working and wil be replaced with new implementation)
 - strip leading whitespace when code context is collapsed?
+- security: does a "dangeriously set inner html" in code/error messages. Uploading a project with malicious
+  javascript might cause problems?
 
-BUGS:
-- security: dangeriously set html in code/error messages. Upload project with malicious javascript?
+## BUGS:
+- entering a non-qualified symbol in the search field and pressing enter will give a malli error in the console.
 
 
 ## Getting Started
 
-Assumes a working node / npm and clojure-cli 11.
+### Server
+
+Requires the  clojure-cli tools (version 1.11+)
+
+Clone the repository and create a "data" directory in the project directory.
+
+Compile and run the tests:
+```sh
+$ clj -X:test
+```
+Starting the api and html/js file server:
+```sh
+$ clj -M -m kondoq.server
+```
+
+### Client
+Assumes a working recent node / npm
 
 install: shadow-cljs via npm
 
 Compiling the shadow-cljs build:
+```sh
 $ npx shadow-cljs compile app
+```
+Run the tests:
+```sh
+$ npx shadow-cljs compile browser-test
+```
 
-Create the database schema in data/kondoq.sqlite:
-$ clj -X kondoq.server/init-db
+See http://localhost:8281/index.html to run the tests and see the test results
 
-Starting the api and html/js file server:
-$ clj -M -m kondoq.server
+### Trying it Out
 
-Visit http://localhost:3002/index.html
+Visit http://localhost:3002/index.html to see the web-app
 
 Add a github project via the projects tab and search using the search tab. After typing three characters a popup
 list appears with potential matches, selectable by mouse.
@@ -63,20 +91,46 @@ value. This single session enables the correct repl switching behaviour.
 See also https://docs.cider.mx/cider/usage/managing_connections.html#adding-repls-to-a-session and the
 .dir-locals.el file in the project.
 
-## Production Build / Install
+Running cljs tests inside cider is currently not supported out of the box. Use the run-test function to execute the
+tests in the current namespace, which output printed in the cljs repl window.
 
+## Production Build / Install
 
 Make the uber jar (from the build.clj), will also create the production javascript:
 ```sh
 $ clj -T:build uber
 ```
 
-Copy the jar to the server, clean the database if a schema change happened
-
-
+Copy the jar in /target to the server, clean the database if a schema change happened.
 
 ### Project Overview
 
+Uses the following technologies:
+
+- clj-kondo
+- re-frame
+- next.jdbc with the xerial sqlite driver
+- honeysql
+- highlight.js
+- integrant
+- ring with jetty
+- malli
+- jsonista
+- clj-http
+- reitit
+
+The API request and response bodies are in edn.
+
+GitHub oauth config is an edn file specified by the "config" system property or environment variable, containing
+the url, secret etc. for accessing the GitHub oauth login page.
+It's probably easier to get an application token and use that to access the GitHub api.
+
+It has the following form (github supplies and id and secret when registering an oauth application):
+{:github-client-id "<client-id>"
+ :github-client-secret "<client-secret>"
+ :github-callback-uri "http://localhost:8280/oauth-callback"}
+
+By default, the server will use  "github-oauth-dev.edn" as a file (register with github create this file yourself).
 
 #### Generic re-frame links
 * Architecture:

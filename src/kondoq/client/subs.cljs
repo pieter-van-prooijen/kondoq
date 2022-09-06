@@ -38,7 +38,7 @@
 (defn- usage-location [usage namespace-location]
   (str namespace-location "#L" (:line-no usage))) ; GitHub line fragment.
 
-;; Reducing function adding a single usage.
+;; Reducing function adding a single var usage.
 (defn- add-usage [{:keys [projects namespaces usages skip] :as result}
                   usage
                   expanded
@@ -71,8 +71,9 @@
 
 ;; Transform the list of usages in a list of rows suitable for <table> rendering:
 ;; Each row has three columns, for project, namespace and usage.
-;; Each column is either [x row-span] (a non-empty cell) or nil (an empty cell in the table,
-;; covered by a rowspan in one of cells above it).
+;; Each column is either [x row-span] (a non-empty cell) or nil
+;; (an empty cell defined by a row-span in previous cells) in the table,
+;;
 ;; Example:
 ;; ([["re-frame" 2] [re-frame.core 2] [{:symbol inc, :ns re-frame.core, :line-no 42, :line "(inc x)"} 1]]
 ;;  [nil            nil               [{:symbol inc, :ns re-frame.core, :line-no 43, :line "(inc y)"} 1]])

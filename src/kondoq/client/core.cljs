@@ -13,25 +13,25 @@
     (println "dev mode")
     (re-frame/reg-global-interceptor db/app-db-validator)))
 
-;; called by shadow-cljs after reloading a file
+;; Called by shadow-cljs after reloading a file.
 (defn ^:dev/after-load mount-root []
   (re-frame/clear-subscription-cache!)
   (let [root-el (.getElementById js/document "app")]
     (rdom/unmount-component-at-node root-el)
     (rdom/render [views/main-panel] root-el)))
 
-;; configured in shadow-cljs in :builds/:app/:modules/:app/:init-fn
+;; Configured in shadow-cljs in :builds/:app/:modules/:app/:init-fn
 (defn init []
-  ;; configure highlight.js to detect malicious code blocks
+  ;; Configure highlight.js to detect malicious code blocks.
   (js/hljs.configure #js {:throwUnescapedHTML true})
-  ;; detect returning from the github oauth login screen.
+  ;; Detect returning from the GitHub oauth login screen.
   (let [search-params (js/URLSearchParams. (.. js/window -location -search))
         href (.. js/window -location -href)
         href-without-search (string/replace href #"\?.*$" "")
         adding-project (.get search-params "adding-project")]
     (if adding-project
       (do
-        ;; reset the app url so a reload won't jump to the adding-project state again.
+        ;; Reset the app url so a reload won't jump to the adding-project state again.
         (. js/history pushState {} "" href-without-search)
         (re-frame/dispatch-sync [::events/initialize-with-adding-project adding-project]))
       (re-frame/dispatch-sync [::events/initialize-db])))

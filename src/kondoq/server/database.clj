@@ -21,7 +21,7 @@
 ;; HikariCP's connectionInitSql only allows a single statement to be executed?
 ;; Wrap the Connectable to set multiple pragma's on connection retrieval. This
 ;; means the init is done for every jdbc/execute! etc., but using the
-;; journal_mode and other pragmas is more important.
+;; wal journal_mode and foreign keys enforcement is crucial.
 (defrecord InitSqlite [connectable]
   java.io.Closeable
   (close [this]
@@ -33,7 +33,7 @@
     (let [conn (jdbc-protocols/get-connection (:connectable this) opts)]
       (jdbc/execute! conn ["PRAGMA journal_mode = WAL"])
       (jdbc/execute! conn ["PRAGMA foreign_keys = ON"])
-      (jdbc/execute! conn ["PRAGMA cache_size = 10000"])
+      (jdbc/execute! conn ["PRAGMA cache_size = 10000"]) ; In 4k pages.
       (jdbc/execute! conn ["PRAGMA synchronous = NORMAL"])
       (jdbc/execute! conn ["PRAGMA optimize"])
       conn)))
@@ -124,6 +124,7 @@
          (into #{})
          (= #{"contexts" "namespaces" "projects" "var_usages"}))))
 
+;; Used in project uploading, so doesn't use a separate transaction.
 (defn insert-project
   "Insert a new project named `project` into `db` located at url `location`."
   [db project location]
@@ -133,6 +134,8 @@
                 (sql/format {:pretty true}))]
     (jdbc/execute! db sql)))
 
+;; Used when rolling back a project insertion, so doesn't use a separate
+;; transaction.
 (defn delete-project
   "Delete `project` from the database `db`, removing all related usages, namespaces
   and source file contexts.
@@ -143,11 +146,16 @@
                         {:params {:project project}})
         _ (jdbc/execute! db sql)]))
 
+;; Used by the API to delete a project.
 (defn delete-project-by-location [db location]
   (let [sql (sql/format {:delete-from :projects
                          :where [:= :location :?location]}
-                        {:params {:location location}})
-        _ (jdbc/execute! db sql)]))
+                        {:params {:location location}})]
+    ;; Use a transaction to ensure any subsequent database actions see the
+    ;; change. (in sqlite parlance, they use this commit as their end mark in the
+    ;; write-ahead log).
+    (jdbc/with-transaction [db-tx db]
+      (jdbc/execute! db-tx sql))))
 
 (defn- source-lines-as-string
   "Return the source code from a sequence of `source-lines` starting at `from` up to
@@ -385,6 +393,7 @@
 
   (schema-exists (db))
 
+  (jdbc/execute-one! (db) ["select count(*) as count from namespaces"])
   (jdbc/get-connection (db))
   (jdbc/execute! (jdbc/get-connection (db)) ["pragma journal_mode"])
   (jdbc/execute! (db) [(str "PRAGMA journal_mode = WAL, foreign_keys = ON; "

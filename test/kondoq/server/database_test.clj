@@ -4,6 +4,7 @@
             [kondoq.server.analysis :refer [analyze]]
             [kondoq.server.database :as db]
             [kondoq.server.test-utils :refer [*db*] :as tu]
+            [next.jdbc :as jdbc]
             [next.jdbc.sql :as jdbc-sql]))
 
 (t/use-fixtures :once tu/system-fixture)
@@ -11,6 +12,10 @@
 
 (def test-source
   "(ns test-project) (defn foo [] (inc 1))")
+
+(defn- table-empty? [db table]
+  (let [{count :count} (jdbc/execute-one! db [(str "select count(*) as count from " table)])]
+    (zero? count)))
 
 (deftest check-database-project-name-limits
   (is (let [[m] (db/insert-project *db* "some-project" "http://example.com")]
@@ -45,13 +50,13 @@
     (is (= context-bar (:context usage-2)))
     (.delete (java.io.File. filename))))
 
-;; returns the filename to be deleted by the test itself
+;; Returns the filename to be deleted by the test itself.
 (defn- insert-test-project []
   (let [filename "/tmp/kondoq-test.clj"
         context "(defn foo []\n  (inc 1)\n(dec 2))"]
     (spit filename (str "(ns test-project)\n\n" context "\n"))
     (db/insert-project *db* "test-project" "http://example.com")
-    (db/insert-namespace *db* (analyze filename)"test-project"
+    (db/insert-namespace *db* (analyze filename) "test-project"
                          "http://example.com/kondoq-test.clj")
     filename))
 
@@ -85,6 +90,15 @@
     (is (= 1 test)) ; Sqlite stores booleans as 0 or 1.
     (is test)
     (is (= "kondoq-test" ns))
+    (.delete (java.io.File. filename))))
+
+;; Check if the "cascade on delete.." constraints work correctly
+(deftest should-remove-namespaces-usages-context-when-project-is-removed
+  (let [filename (insert-test-project)
+        tables ["projects" "namespaces" "var_usages" "contexts"]]
+    (is (every? #(not (table-empty? *db* %)) tables))
+    (db/delete-project-by-location *db* "http://example.com")
+    (is (every? #(table-empty? *db* %) tables))
     (.delete (java.io.File. filename))))
 
 (deftest should-see-if-schema-exists

@@ -1,24 +1,29 @@
 (ns kondoq.client.project-views
-  (:require [goog.dom :as dom]
+  "Views for the project panel."
+  (:require [clojure.string :as string]
+            [goog.dom :as dom]
             [kondoq.client.project-events :as project-events]
             [kondoq.client.subs :as subs]
             [kondoq.client.util :refer [<sub >evt] :as util]))
 
-(defn show-enter-project-url [e]
+(defn- show-enter-project-url [e]
   (.preventDefault e)
   (>evt [::project-events/show-enter-project-url]))
 
 ;; Generic cancel function.
-(defn cancel-projects [e]
+(defn- cancel-projects [e]
   (.preventDefault e)
   (>evt [::project-events/cancel-projects]))
 
-(defn add-project [e]
+(defn- add-project [e]
   (.preventDefault e)
-  (>evt [::project-events/add-project [(.-value (dom/getElement "project-url"))
-                                       (.-value (dom/getElement "token"))]]))
+  (let [project-url (.-value (dom/getElement "project-url"))
+        token (.-value (dom/getElement "token"))]
+    (if (string/starts-with? project-url "https://github.com/")
+      (>evt [::project-events/add-project [project-url token]])
+      (js/alert "Project URL should have the form https://github.com/<user>/<project>"))))
 
-(defn add-project-form [is-active]
+(defn- add-project-form [is-active]
   (let [projects-state (<sub [::subs/projects-state])
         current-project (<sub [::subs/current-project])]
     [:div.modal {:class (when is-active "is-active")}
@@ -79,12 +84,12 @@
                (when-let [current-file (:current-file current-project)]
                  [:div.is-warning "File: " current-file])])]]])]]]))
 
-(defn delete-project [project location e]
+(defn- delete-project [project location e]
   (.preventDefault e)
   (when (js/confirm (str "Do you want to delete project " project " ?"))
     (>evt [::project-events/delete-project location])))
 
-(defn project-row [{:keys [project location ns-count]}]
+(defn- project-row [{:keys [project location ns-count]}]
   ^{:key project} [:tr
                    [:td project]
                    [:td [:a {:href location :target "_blank"} location]]
