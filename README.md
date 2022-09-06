@@ -64,7 +64,9 @@ Compiling the shadow-cljs build:
 ```sh
 $ npx shadow-cljs compile app
 ```
-Run the tests:
+
+Compile the tests:
+
 ```sh
 $ npx shadow-cljs compile browser-test
 ```
@@ -75,8 +77,8 @@ See http://localhost:8281/index.html to run the tests and see the test results
 
 Visit http://localhost:3002/index.html to see the web-app
 
-Add a github project via the projects tab and search using the search tab. After typing three characters a popup
-list appears with potential matches, selectable by mouse.
+Add a github project via the projects tab (using a personal access token) and search using the search tab. After
+typing three characters a popup list appears with potential matches, selectable by mouse.
 
 ## Development with CIDER (v1.5.0+)
 
@@ -95,8 +97,8 @@ cider-jack-in-cljs (C-c M-S or C- C-x j s) (note the upper-case S) , say "y" to 
 
 Open or reload the app on http://localhost:8280 , the cljs repl should now work.
 
-Cider will merge the two repls in a single session because of the cider-merge-sessions variable has the 'project
-value. This single session enables the correct repl switching behaviour.
+Cider will merge the two repls in a single session because of cider-merge-sessions variable has the 'project
+value. This single session enables correct repl switching behaviour.
 See also https://docs.cider.mx/cider/usage/managing_connections.html#adding-repls-to-a-session and the
 .dir-locals.el file in the project.
 
@@ -110,6 +112,10 @@ Make the uber jar (from the build.clj), will also create the production javascri
 $ clj -T:build uber
 ```
 
+Run the jar with:
+```sh
+java -Dconfig=github-oauth-dev.edn -jar target/<path-to-jar>
+```
 Copy the jar in /target to the server, clean the database if a schema change happened.
 
 ### Project Overview
