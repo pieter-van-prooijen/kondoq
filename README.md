@@ -35,7 +35,9 @@ Shows the var usage (e.g. function invocation or reference) in its containing de
 
 Requires the  clojure-cli tools (version 1.11+)
 
-Clone the repository and create a "data" directory in the project directory.
+Clone the repository and create the following files:
+- create a "data" directory in the project directory.
+- copy the provided github-oauth-sample.edn file to github-oauth-dev.edn, edit this later when enabling oauth.
 
 Compile and run the tests:
 ```sh
@@ -43,13 +45,20 @@ $ clj -X:test
 ```
 Starting the api and html/js file server:
 ```sh
-$ clj -M -m kondoq.server
+$ clj -M:dev -m kondoq.server
 ```
+
+Keep this server running.
 
 ### Client
 Assumes a working recent node / npm
 
 install: shadow-cljs via npm
+
+Install the packages in package.json:
+```sh
+npm install
+```
 
 Compiling the shadow-cljs build:
 ```sh
