@@ -76,35 +76,42 @@
   (jdbc/execute! db ["CREATE INDEX projects_location_index ON projects(location)"])
 
   (jdbc/execute! db [(str "CREATE TABLE namespaces ("
-                          " ns TEXT PRIMARY KEY,"
+                          " ns TEXT, "
+                          " language TEXT NOT NULL,"
                           " test INTEGER NOT NULL,"
                           " location TEXT NOT NULL,"
                           " project TEXT NOT NULL,"
-                          " FOREIGN KEY(project) REFERENCES projects(project) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED )"
-                          " STRICT")])
+                          " PRIMARY KEY(ns, language)"
+                          " FOREIGN KEY(project) REFERENCES projects(project)"
+                          "   ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED )"
+                          "   STRICT")])
   (jdbc/execute! db ["CREATE INDEX namespaces_project_index ON namespaces(project)"])
 
   (jdbc/execute! db [(str "CREATE TABLE var_usages ("
                           " symbol TEXT NOT NULL,"
                           " arity INTEGER,"
                           " used_in_ns TEXT NOT NULL,"
+                          " language TEXT NOT NULL,"
                           " line_no INTEGER NOT NULL,"
                           " column_no INTEGER NOT NULL,"
                           " start_context INTEGER,"
                           " end_context INTEGER,"
-                          " FOREIGN KEY(used_in_ns) REFERENCES namespaces(ns) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED)"
-                          " STRICT")])
+                          " FOREIGN KEY(used_in_ns, language) REFERENCES namespaces(ns, language)"
+                          "   ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED)"
+                          "   STRICT")])
   (jdbc/execute! db ["CREATE INDEX var_usages_symbol_index ON var_usages(symbol)"])
   (jdbc/execute! db ["CREATE INDEX var_usages_arity_index ON var_usages(arity)"])
   (jdbc/execute! db ["CREATE INDEX var_usages_ns_index ON var_usages(used_in_ns)"])
 
   (jdbc/execute! db [(str "CREATE TABLE contexts ("
-                          " ns TEXT NOT NULL,"
+                          " ns TEXT NOT NULL,",
+                          " language TEXT NOT NULL, "
                           " start_context INTEGER NOT NULL,"
                           " single_line INTEGER NOT NULL,"
                           " source_code TEXT NOT NULL,"
-                          " FOREIGN KEY(ns) REFERENCES namespaces(ns) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED)"
-                          " STRICT")])
+                          " FOREIGN KEY(ns, language) REFERENCES namespaces(ns, language)"
+                          "   ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED)"
+                          "   STRICT")])
   (jdbc/execute! db ["CREATE UNIQUE INDEX contexts_index ON contexts(ns, start_context, single_line)"]))
 
 (defn delete-schema [db]
@@ -167,10 +174,11 @@
        (string/join "\n")))
 
 (defn- insert-contexts [db usages source-lines]
-  (doseq [{:keys [used-in-ns line-no start-context end-context]} usages]
+  (doseq [{:keys [used-in-ns language line-no start-context end-context]} usages]
     (let [;; Multi line context.
           sql (-> (sql-h/insert-into :contexts)
                   (sql-h/values [{:ns (str used-in-ns)
+                                  :language (name language)
                                   :start-context start-context
                                   :single-line false
                                   :source_code (source-lines-as-string
@@ -184,6 +192,7 @@
           ;; Single line context.
           sql (-> (sql-h/insert-into :contexts)
                   (sql-h/values [{:ns (str used-in-ns)
+                                  :language (name language)
                                   :start-context line-no
                                   :single-line true
                                   :source_code (source-lines-as-string
@@ -201,10 +210,12 @@
   The namespace will be marked as belonging to `project` and having a public
   url of `location`."
   [db namespace-analysis project location]
-  (let [{:keys [namespace test-namespace usages source-lines]} namespace-analysis]
+  (let [{:keys [namespace language test-namespace usages source-lines]}
+        namespace-analysis]
     (when (and namespace (seq usages))
       (let [sql (-> (sql-h/insert-into :namespaces)
                     (sql-h/values [{:ns (str namespace)
+                                    :language (name language)
                                     :test test-namespace
                                     :location location
                                     :project project}])
@@ -214,7 +225,8 @@
                     (sql-h/values (map (fn [o]
                                          (-> o
                                              (update :symbol str)
-                                             (update :used-in-ns str)))
+                                             (update :used-in-ns str)
+                                             (update :language name)))
                                        usages))
                     (sql/format {:pretty true}))
             _ (jdbc/execute! db sql)]

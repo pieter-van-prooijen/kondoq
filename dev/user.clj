@@ -3,7 +3,7 @@
             [kondoq.server.core]))
 
 ;; Use the integrant system config defined in kondoq.server.core
-(integrant.repl/set-prep! (constantly kondoq.server.core/config))
+(integrant.repl/set-prep! (constantly kondoq.server.core/full-config))
 
 (comment
 

@@ -5,12 +5,20 @@ Using the clj-kondo analysis tool, scan github open source projects for var usag
 Expose an API and corresponding webapp for querying this database, together with a project upload section. 
 Shows the var usage (e.g. function invocation or reference) in its containing defn.
 
+Related work: dewey (see https://blog.phronemophobic.com/dewey-analysis.html )
+Kondoq is more geared towards showing var usage in its context.
+
 ## TODO:
 - How does the UI and performance hold up with a large number of projects (> 10)?. 
 - give preference to "well-liked" repositories in results? (e.g. retieve and sort by the number of github stars)
 - etag matching on github doesn't work with oauth tokens, as the token differs for each upload?
   Yes: the response has a Vary header which contains "Authorization" when making an authorized request. This means
   cached content won't help reduce the number of GitHub api requests unless the using fixed application tokens.
+
+- a better way to skip certains files for analysis (like duplicate namespaces), see the skip-blob? predicate in
+  github.clj
+
+- determine project main branch instead of assuming "master"
 
 - Does Hikari allows a way to execute multiple pragmas upon connection creation? Needs a complicated work-around at
   the moment to initialize sqlite correctly. Perhaps sqlite/xerial needs a different approach to keep the
@@ -22,8 +30,11 @@ Shows the var usage (e.g. function invocation or reference) in its containing de
   reader instances?
   (note that read-only replicas in litestream are not working and wil be replaced with new implementation)
 - strip leading whitespace when code context is collapsed?
-- security: does a "dangeriously set inner html" in code/error messages. Uploading a project with malicious
-  javascript might cause problems?
+
+## Security
+- does a "dangeriously set inner html" in code/error messages. Uploading a project with malicious
+  javascript might cause problems? (*fixed* uses highlight.js to detect malicious code and shows the html error
+  message only when debugging)
 
 ## BUGS:
 - entering a non-qualified symbol in the search field and pressing enter will give a malli error in the console.
@@ -36,8 +47,8 @@ Shows the var usage (e.g. function invocation or reference) in its containing de
 Requires the  clojure-cli tools (version 1.11+)
 
 Clone the repository and create the following files:
-- create a "data" directory in the project directory.
-- copy the provided github-oauth-sample.edn file to github-oauth-dev.edn, edit this later when enabling oauth.
+- (optional) copy the provided github-oauth-sample.edn file to github-oauth-dev.edn, edit this later when enabling
+  oauth using the 'config' system property.
 
 Compile and run the tests:
 ```sh
@@ -118,6 +129,19 @@ java -Dconfig=github-oauth-dev.edn -jar target/<path-to-jar>
 ```
 Copy the jar in /target to the server, clean the database if a schema change happened.
 
+### Batch Upload
+There's an import-batch function defined in core.clj, which allows for off-line imports of projects. Invoke this
+with:
+```sh
+clj -X:import-batch \
+    :token '"<your github access token goes here>"' \
+    :urls '[
+
+"https://github.com/metosin/jsonista"
+... other urls go here
+
+]'
+```
 ### Project Overview
 
 Uses the following technologies:

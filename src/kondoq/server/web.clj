@@ -25,7 +25,7 @@
   For instance (wrap-component h {:db db}) will return a handler which has the
   database accessible under :db in the request map"
   [handler component]
-  (fn [request]
+  (fn wrap-component [request]
     (handler (merge request component))))
 
 (declare create-handler)
@@ -37,9 +37,9 @@
                     keyword-params/wrap-keyword-params
                     params/wrap-params
                     (resource/wrap-resource "public")
-                    (wrap-component {:db db})
-                    (wrap-component {:etag-db etag-db})
-                    (wrap-component {:github-oauth-config (util/read-config)}))
+                    (wrap-component {:db db
+                                     :etag-db etag-db
+                                     :github-oauth-config (util/read-config)}))
                 ;; :join? => true will block the thread until the server ends.
                 {:port port :join? false})]
     server))
@@ -51,10 +51,13 @@
   (.join server)
   (log/info "stopped jetty server" server))
 
-(defn- coerce-param [x default convert]
-  (if (string/blank? x)
+(defn- coerce-param
+  "Coerce the request parameter string `s` to its correct type using `convert-fn`.
+   A blank or missing parameter reverts to the `default` value."
+  [s default convert-fn]
+  (if (string/blank? s)
     default
-    (convert x)))
+    (convert-fn s)))
 
 (defn- edn-response
   ([body]

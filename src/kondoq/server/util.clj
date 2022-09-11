@@ -1,5 +1,6 @@
 (ns kondoq.server.util
-  (:require [clojure.string :as string])
+  (:require [clojure.string :as string]
+            [clojure.tools.logging :as log])
   (:import [java.util Base64]
            [java.security SecureRandom]))
 
@@ -15,12 +16,14 @@
 (defn- read-config*
   "Read and returnthe edn file specified by the 'config' system property or
   environment variable.
-  Throw an exception if the environment variable does not exist or the file
-  cannot be opened"
+  Returns an empty config if the property is not specified.
+  Throws an exception if the file cannot be opened or parsed."
   []
   (let [path (or (System/getProperty "config") (System/getenv "config"))]
     (if (string/blank? path)
-      (throw (ex-info "Property or environment variable 'config' is not specified." {}))
+      (do
+        (log/warn "Property or environment variable 'config' is not specified, no oauth config is used")
+        {})
       (if-let [config (read-string (slurp path))]
         (assoc config :path path) ; add where this config was loaded from
         (throw (ex-info "Config file cannot be read or parsed." {:path path}))))))

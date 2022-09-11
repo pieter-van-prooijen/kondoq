@@ -21,7 +21,7 @@
                                  {:accept "application/vnd.github.v3+json"
                                   :debug false
                                   :headers
-                                  ;; personal access tokens have non-standard "token" scheme?
+                                  ;; GitHub doesn't use "Bearer" ?
                                   (merge (when-not (string/blank? token)
                                            {:authorization (str "token " token)})
                                          (when cached-etag
@@ -49,13 +49,18 @@
    ;; Clj-kondo has some duplicate namespaces.
    (and (= project-name "clj-kondo")
         (or (string/includes? path "inlined")
-            (string/includes? path "corpus")))))
+            (string/includes? path "corpus")))
+   ;; Reitit examples cause duplicate namespace errors
+   (and (= project-name "reitit")
+        (string/includes? path "examples"))))
 
 ;; List of file name / blob-url / display-url maps.
-(defn- fetch-clojure-source-files [etag-db user project-name token]
+(defn- fetch-clojure-source-files [etag-db user project-name branch token]
   (let [tree-url (str "https://api.github.com/repos/"
                       user "/" project-name
-                      "/git/trees/master?recursive=true")
+                      "/git/trees/"
+                      branch
+                      "?recursive=true")
         body (fetch-github-resource etag-db tree-url token)]
     (->> (:tree body)
          (filter #(re-find #"(?:clj|cljs|cljc)$" (:path %)))
@@ -64,8 +69,9 @@
                 {:blob-url url
                  :display-url (str "https://github.com/"
                                    user "/" project-name
-                                   "/blob/master/" ; use sha?
-                                   path)
+                                   "/blob/"
+                                   branch  ; Use sha instead?
+                                   "/" path)
                  :sha sha})))))
 
 ;; Insert/analyze a file (git blob) of a project.
@@ -95,7 +101,8 @@
   (try
     (jdbc/with-transaction [db db-arg]
       (let [[user project] (take-last 2 (string/split project-url #"/"))
-            source-files (fetch-clojure-source-files etag-db user project token)
+            source-files (fetch-clojure-source-files etag-db user project
+                                                     "master" token)
             ns-total (count source-files)]
         (db/delete-project db project)
         (db/insert-project db project project-url)
@@ -109,12 +116,12 @@
             (when (Thread/interrupted)
               (throw (InterruptedException. "upsert-project cancelled")))))))
     (catch Throwable t
-      ;; normal cancel should not be reported as an error
+      ;; Don't report cancels instigated by the user.
       (when-not (instance? InterruptedException t)
         (log/warn t "upsert-project saw exception:")
         (project-status/update-project-with-error project-url (.getMessage t))))
     (finally
-      ;; keep the project status around in case an error happened.
+      ;; Keep the project status around in case an error happened.
       (let [{error :error} (project-status/fetch-project-status project-url)]
         (when-not error
           (project-status/delete-project-status project-url))))))

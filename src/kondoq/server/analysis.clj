@@ -16,6 +16,17 @@
                             (first))]
     [from to]))
 
+(defn- path->language
+  "Determine the language of a source file using `path`.
+  Cljc or unrecognized extensions have the :clj language, returns nil if the path
+  does not have an extension."
+  [path]
+  (when-let [suffix (re-find #"\.([^.]+)$" path)]
+    (condp = (second suffix)
+      "clj" :clj
+      "cljs" :cljs
+      :clj)))
+
 ;; Some var-usages don't have a :to entry (e.g. in the case of using a "js/*" var)
 (defn- valid-var-usage? [usage]
   (every? #(get usage %) [:to :name :from :row :col :end-row]))
@@ -53,6 +64,7 @@
         namespace (-> namespace-definitions
                       first
                       :name)
+        language (path->language path)
         usages(->> var-usages
                    (filter valid-var-usage?)
                    (map (fn [{:keys [to name from row col arity]}]
@@ -62,6 +74,7 @@
                             {:symbol (symbol (clojure.core/name to) (clojure.core/name name))
                              :arity arity
                              :used-in-ns from
+                             :language language
                              :line-no row
                              :column-no col
                              :start-context start-context
@@ -70,6 +83,7 @@
                    ;; which are usually the same for non-core vars.
                    (distinct))]
     {:namespace namespace
+     :language language
      :test-namespace (test-namespace? namespace)
      :usages usages
      :source-lines source-lines}))
@@ -86,10 +100,12 @@
              line-seq
              vec))
 
-  (clj-kondo/run! {:lint ["src/kondoq/views.cljs"]
+  (clj-kondo/run! {:lint ["src/kondoq/client/views.cljs"]
                    :config {:analysis true
                             :skip-lint true}})
 
   (re-find #"(-|_)test\.(clj|cljc|cljs)$" "a-test.clj")
   (test-namespace? 'a-test)
+
+  (path->language "abc/d")
   )

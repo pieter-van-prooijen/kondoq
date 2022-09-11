@@ -1,12 +1,12 @@
 (ns kondoq.client.views
   "Main view of the app."
-  (:require [kondoq.client.events :as events]
+  (:require [kondoq.client.config :as config]
+            [kondoq.client.events :as events]
             [kondoq.client.pagination]
             [kondoq.client.project-views :as project-views]
             [kondoq.client.search-views :as search-views]
             [kondoq.client.subs :as subs]
             [kondoq.client.util :refer [<sub >evt] :as util]))
-
 
 (defn- switch-to-panel [panel e]
   (.preventDefault e)
@@ -26,9 +26,11 @@
       [:p "Error type: " last-error-code " (" ({6 "HTTP" 8 "Timeout"} last-error-code "unknown") ")"]
       [:p "HTTP status code: " status]
       [:p "HTTP status text: " status-text]
-      (when (and response (= content-type "text/html"))
-        [:div {:dangerouslySetInnerHTML {:__html response}}])
-      ]]))
+      (when response
+        ;; Only show the html as-is when debugging!
+        (if (and config/debug? (= content-type "text/html"))
+          [:div {:dangerouslySetInnerHTML {:__html response}}]
+          [:div response]))]]))
 
 (defn main-panel []
   (let [active-panel (<sub [::subs/active-panel])

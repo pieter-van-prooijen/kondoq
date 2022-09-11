@@ -4,26 +4,39 @@
             [integrant.core :as ig]
             [kondoq.server.database :as db]
             [kondoq.server.etag :as etag]
+            [kondoq.server.github :as github]
             [kondoq.server.web :as web]))
 
-(def config (merge web/config
-                   etag/config
-                   db/config))
+(def full-config (merge web/config
+                        etag/config
+                        db/config))
+
+(defn init
+  ([]
+   (init full-config))
+  ([config]
+   (let [system (ig/init config)
+         db (:kondoq/db system)
+         path (get-in config [:kondoq/db :dbname])]
+     (if (db/schema-exists db)
+       (log/info "schema already present in database " path)
+       (do
+         (log/info "creating schema in database " path)
+         (db/create-schema db)))
+     system)))
 
 (defn -main [& _]
-  (let [system (ig/init config)
-        db (:kondoq/db system)
-        path (get-in config [:kondoq/db :dbname])]
-    (if (db/schema-exists db)
-      (log/info "schema already present in database " path)
-      (do
-        (log/info "creating schema in database " path)
-        (db/create-schema db)))))
+  (init))
 
-(defn init-db [_]
-  (let [system (ig/init config)]
-    (db/create-schema (:kondoq/db system))
-    (ig/halt! system)))
+(defn import-batch [{:keys [urls token]}]
+  (let [system (init (merge db/config etag/config)) ; No need for the web server.
+        db (:kondoq/db system)
+        etag-db (:kondoq/etag-db system)]
+    (doseq [url urls]
+      (log/infof "Upserting project %s" url)
+      (github/upsert-project db etag-db url token)
+      (log/infof "Added project %s" url))
+    (System/exit 0))) ; clojure-cli doesn't exit automatically ?
 
 (comment
   (defn- db [] (:kondoq/db integrant.repl.state/system))

@@ -40,6 +40,7 @@
                    (highlight-as-clojure)
                    (add-line-markup start-context line-no)))]
     [:pre {:class class}
+     ;; See core.cljs which configures highlight.js to escape unsafe sources.
      [:code {:dangerouslySetInnerHTML {:__html html}}]]))
 
 (defn- usage-code [{:keys [line context line-no start-context location]

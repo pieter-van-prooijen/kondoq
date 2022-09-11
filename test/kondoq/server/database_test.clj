@@ -92,6 +92,36 @@
     (is (= "kondoq-test" ns))
     (.delete (java.io.File. filename))))
 
+(deftest should-handle-same-name-clj-cljs-namespaces
+  (let [filename-clj "/tmp/kondoq-test.clj"
+        context-foo "(defn foo []\n  (inc 1)\n(dec 2))"
+        _ (spit filename-clj (str "(ns kondoq-test)\n\n"
+                                  context-foo))
+        _ (db/insert-project *db* "test-project" "http://example.com")
+        analysis-clj (analyze filename-clj)
+        _ (db/insert-namespace *db* analysis-clj "test-project"
+                               "http://example.com/kondoq-test.clj")
+
+        filename-cljs "/tmp/kondoq-test.cljs"
+        _ (spit filename-cljs (str "(ns kondoq-test)\n\n"
+                                   context-foo))
+        analysis-cljs (analyze filename-cljs)
+        _ (db/insert-namespace *db* analysis-cljs "test-project"
+                               "http://example.com/kondoq-test.cljs")
+
+        namespaces (jdbc-sql/query *db* (sql/format {:select [:ns :language]
+                                                     :from [:namespaces]}))]
+
+    (let [{:keys [ns language]} (first namespaces)]
+      (is (= "kondoq-test" ns))
+      (is (= "clj" language)))
+    (let [{:keys [ns language]} (second namespaces)]
+      (is (= "kondoq-test" ns))
+      (is (= "cljs" language)))
+
+    (.delete (java.io.File. filename-clj))
+    (.delete (java.io.File. filename-cljs))))
+
 ;; Check if the "cascade on delete.." constraints work correctly
 (deftest should-remove-namespaces-usages-context-when-project-is-removed
   (let [filename (insert-test-project)

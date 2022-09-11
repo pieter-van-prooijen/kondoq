@@ -44,45 +44,48 @@
          [:p.help "Project URL should have the form https://github.com/<user>/<project>"]]
 
         [:div.field
-         [:label.label "GitHub Personal Access Token (leave empty for oath authorization)"]
+         [:label.label "GitHub Personal Access Token (leave empty for oauth authorization)"]
          [:div.control
           [:input.input {:id "token"
                          :name "token"
                          :type "text"}]] ;; Should really be password field?
-         [:p.help {:dangerouslySetInnerHTML
-                   {:__html
-                    (str "Without authorization, the GitHub API is limited to 200 requests/h. <br>"
-                         "Get a personal access token (<strong>only</strong> for retrieving public git repositories) "
-                         "from your github account settings at "
-                         "<a target='_blank' href='https://github.com/settings/tokens'>https://github.com/settings/tokens</a>.<br>"
-                         "If you leave the token field blank, the app will redirect you to the github oauth login page to get a temporary token that way.<br>"
-                         "<br>"
-                         "Tokens will <strong>not</strong> be stored or logged in the Kondoq backend.<br>")}}]]
+         [:div.help
+          [:p "Without authorization, the GitHub API is limited to 200 requests/h."]
+          [:p
+           "Get a personal access token (" [:strong "only"] " for retrieving public git repositories) "
+           "from your github account settings at "
+           [:a {:target "_blank"
+                :href "https://github.com/settings/tokens"}
+            "https://github.com/settings/tokens" ]]
+          [:p "If you leave the token field blank, the app will redirect you to the github oauth login page to get a temporary token that way."]
+          [:br]
+          [:p "Tokens will " [:strong "not"] " be stored or logged in the Kondoq backend."]
+          [:br]]
 
-        [:div.field.is-grouped
-         [:div.control
-          [:button.button.is-link
-           {:on-click #(when (= projects-state :entering-project-url) add-project)
-            :class (when (= projects-state :adding-project) "is-loading")}
-           "Add"]]
-         [:div.control
-          [:button.button.is-link.is-light
-           {:on-click cancel-projects}
-           "Cancel"]]]]
-       (cond
-         (#{:adding-project :error-adding-project} projects-state)
-         [:div.level.mt-4
-          [:div.level-left
-           [:div.level-item
-            [:h6.title.is-6 (:project current-project)]]
-           [:div.level-item
-            (if (= projects-state :adding-project)
-              [:progress.progress.is-primary {:max (:ns-total current-project)
-                                              :value (:ns-count current-project)}]
-              [:<>
-               [:div.is-warning "Error: " (:error current-project)]
-               (when-let [current-file (:current-file current-project)]
-                 [:div.is-warning "File: " current-file])])]]])]]]))
+         [:div.field.is-grouped
+          [:div.control
+           [:button.button.is-link
+            {:on-click #(when (= projects-state :entering-project-url) add-project)
+             :class (when (= projects-state :adding-project) "is-loading")}
+            "Add"]]
+          [:div.control
+           [:button.button.is-link.is-light
+            {:on-click cancel-projects}
+            "Cancel"]]]]
+        (cond
+          (#{:adding-project :error-adding-project} projects-state)
+          [:div.level.mt-4
+           [:div.level-left
+            [:div.level-item
+             [:h6.title.is-6 (:project current-project)]]
+            [:div.level-item
+             (if (= projects-state :adding-project)
+               [:progress.progress.is-primary {:max (:ns-total current-project)
+                                               :value (:ns-count current-project)}]
+               [:<>
+                [:div.is-warning "Error: " (:error current-project)]
+                (when-let [current-file (:current-file current-project)]
+                  [:div.is-warning "File: " current-file])])]]])]]]]))
 
 (defn- delete-project [project location e]
   (.preventDefault e)

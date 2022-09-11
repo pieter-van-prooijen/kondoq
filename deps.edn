@@ -35,8 +35,9 @@
    :jvm-opts ["-XX:-OmitStackTraceInFastThrow"
               "-Dconfig=github-oauth-dev.edn"]}
 
-  :build {:deps {io.github.clojure/tools.build {:git/tag "v0.8.3" :git/sha "0d20256"}}
-          :ns-default build}
+  :build
+  {:deps {io.github.clojure/tools.build {:git/tag "v0.8.3" :git/sha "0d20256"}}
+   :ns-default build}
 
   :test
   {:extra-paths ["test"]
@@ -49,5 +50,10 @@
   ;; clj -X:deps tree for all deps
   ;; clj -M:outdated for old dependencies
   :outdated {:extra-deps {com.github.liquidz/antq {:mvn/version "RELEASE"}}
-             :main-opts ["-m" "antq.core"]}}}
+             :main-opts ["-m" "antq.core"]}
+
+  :import-batch
+  {:exec-fn kondoq.server.core/import-batch
+   :exec-args {:urls ["http://example.com"]
+               :token "github-access-token"}}}}
 
