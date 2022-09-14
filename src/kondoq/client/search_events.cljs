@@ -34,9 +34,8 @@
                                    (goog.uri.utils/appendParam "page-size"
                                                                page-size))
                           :on-success ::process-fetch-namespaces-usages}]]
-             :db (-> db
-                     (assoc :symbol (symbol fq-symbol-name))
-                     (assoc :arity arity))}))
+             :db (assoc db :symbol (symbol fq-symbol-name)
+                        :arity arity)}))
 
 (re-frame/reg-event-db
  ::process-fetch-namespaces-usages
@@ -44,16 +43,16 @@
             (let [{:keys [namespaces usages usages-count page page-size]}
                   response]
               (-> db
-                  (assoc :namespaces namespaces)
-                  (assoc :usages usages)
-                  (assoc :usages-count usages-count)
-                  (assoc-in [:pagination :page] page)
-                  (assoc-in [:pagination :page-size] page-size)
-                  (assoc :symbol-counts [])
-                  ;; When paging, all namespaces and projects are expanded.
-                  (assoc :expanded (-> #{}
+                  (assoc :namespaces namespaces
+                         :usages usages
+                         :usages-count usages-count
+                         :symbol-counts []
+                         ;; When paging, all namespaces and projects are expanded.
+                         :expanded (-> #{}
                                        (into (map :project namespaces))
-                                       (into (map :ns namespaces))))))))
+                                       (into (map :ns namespaces))))
+                  (assoc-in [:pagination :page] page)
+                  (assoc-in [:pagination :page-size] page-size)))))
 
 ;; When fetching the symbol counts, keep track of the request number
 ;; (which is echoed by the backend), so slow responses for early requests
@@ -75,9 +74,8 @@
  (fn-traced [db [_ response]]
             (let [{:keys [symbol-counts-q symbol-counts request-no]} response]
               (if (>= request-no (:symbol-counts-request-no db 0))
-                (-> db
-                    (assoc :symbol-counts-q symbol-counts-q)
-                    (assoc :symbol-counts symbol-counts))
+                (assoc db :symbol-counts-q symbol-counts-q
+                       :symbol-counts symbol-counts)
                 db)))) ; Out-of-order request, ignore.
 
 

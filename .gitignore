@@ -27,4 +27,5 @@
 github-token.txt
 github-oauth-*.edn
 run-batch.sh
+README.html
 

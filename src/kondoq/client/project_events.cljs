@@ -20,10 +20,9 @@
  ::process-fetch-projects
  (fn-traced [db [_ response]]
             (let [{:keys [projects manifest config-path]} response]
-              (-> db
-                  (assoc :projects projects)
-                  (assoc :manifest manifest)
-                  (assoc :config-path config-path)))))
+              (assoc db :projects projects
+                     :manifest manifest
+                     :config-path config-path))))
 
 ;; Generic cancel event, dispatches to the correct one depending on the state.
 (re-frame/reg-event-fx
