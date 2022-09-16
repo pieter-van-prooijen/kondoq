@@ -18,14 +18,14 @@
     (zero? count)))
 
 (deftest check-database-project-name-limits
-  (is (let [[m] (db/insert-project *db* "some-project" "http://example.com")]
+  (is (let [[m] (db/insert-project *db* "some-project" "http://example.com" 42)]
         (= 1 (:next.jdbc/update-count m)))
       "normal length project name/location should insert")
   (is (thrown? java.sql.SQLException
-               (db/insert-project *db* (apply str (repeat 128 "a")) "http://example.com"))
+               (db/insert-project *db* (apply str (repeat 128 "a")) "http://example.com" 42))
       "should not allow project names > 127 characters")
   (is (thrown? java.sql.SQLException
-               (db/insert-project *db* "some-project" (apply str (repeat 256 "a"))))
+               (db/insert-project *db* "some-project" (apply str (repeat 256 "a")) 42))
       "should not allow project locations > 255 characters"))
 
 (deftest source-lines-extraction
@@ -37,7 +37,7 @@
                               "\n\n"
                               context-bar
                               "\n"))
-        _ (db/insert-project *db* "test-project" "http://example.com")
+        _ (db/insert-project *db* "test-project" "http://example.com" 42)
         analysis (analyze filename)
         _ (db/insert-namespace *db* analysis "test-project"
                                "http://example.com/kondoq-test.clj")
@@ -51,14 +51,17 @@
     (.delete (java.io.File. filename))))
 
 ;; Returns the filename to be deleted by the test itself.
-(defn- insert-test-project []
-  (let [filename "/tmp/kondoq-test.clj"
-        context "(defn foo []\n  (inc 1)\n(dec 2))"]
-    (spit filename (str "(ns test-project)\n\n" context "\n"))
-    (db/insert-project *db* "test-project" "http://example.com")
-    (db/insert-namespace *db* (analyze filename) "test-project"
-                         "http://example.com/kondoq-test.clj")
-    filename))
+(defn- insert-test-project
+  ([]
+   (insert-test-project 42))
+  ([nof-stars]
+   (let [filename "/tmp/kondoq-test.clj"
+         context "(defn foo []\n  (inc 1)\n(dec 2))"]
+     (spit filename (str "(ns test-project)\n\n" context "\n"))
+     (db/insert-project *db* "test-project" "http://example.com" nof-stars)
+     (db/insert-namespace *db* (analyze filename) "test-project"
+                          "http://example.com/kondoq-test.clj")
+     filename)))
 
 (deftest fetch-usages-with-empty-string
   (let [filename (insert-test-project)
@@ -80,7 +83,7 @@
         context-foo "(defn foo []\n  (inc 1)\n(dec 2))"
         _ (spit filename (str "(ns kondoq-test)\n\n"
                               context-foo))
-        _ (db/insert-project *db* "test-project" "http://example.com")
+        _ (db/insert-project *db* "test-project" "http://example.com" 42)
         analysis (analyze filename)
         _ (db/insert-namespace *db* analysis "test-project"
                                "http://example.com/kondoq-test.clj")
@@ -97,7 +100,7 @@
         context-foo "(defn foo []\n  (inc 1)\n(dec 2))"
         _ (spit filename-clj (str "(ns kondoq-test)\n\n"
                                   context-foo))
-        _ (db/insert-project *db* "test-project" "http://example.com")
+        _ (db/insert-project *db* "test-project" "http://example.com" 42)
         analysis-clj (analyze filename-clj)
         _ (db/insert-namespace *db* analysis-clj "test-project"
                                "http://example.com/kondoq-test.clj")
@@ -134,3 +137,7 @@
 (deftest should-see-if-schema-exists
   (is (db/schema-exists *db*)))
 
+(deftest should-return-nof-stars
+  (insert-test-project 1234)
+  (let [[{:keys [nof-stars]}]  (db/search-projects *db*)]
+    (is (= 1234 nof-stars))))

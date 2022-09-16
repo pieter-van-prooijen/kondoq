@@ -1,4 +1,7 @@
 (ns kondoq.server.core
+  "Main entry point for kondoq service.
+   Also contains an `import-batch` function to import projects from the
+   command-line."
   (:gen-class)
   (:require [clojure.tools.logging :as log]
             [integrant.core :as ig]
@@ -11,7 +14,7 @@
                         etag/config
                         db/config))
 
-(defn init
+(defn- init
   ([]
    (init full-config))
   ([config]
@@ -28,7 +31,11 @@
 (defn -main [& _]
   (init))
 
-(defn import-batch [{:keys [urls token]}]
+(defn import-batch
+  "Import the projects referenced by `urls` from GitHub using the
+   application access `token`.
+   Invoke using clj -X:import-batch :token '<token>' :urls '[\"<url-1>\" ...]'."
+  [{:keys [urls token]}]
   (let [system (init (merge db/config etag/config)) ; No need for the web server.
         db (:kondoq/db system)
         etag-db (:kondoq/etag-db system)]

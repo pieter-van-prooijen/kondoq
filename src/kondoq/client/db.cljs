@@ -36,6 +36,7 @@
   (m/schema [:map {:closed true}
              [:project {:optional true} :not-blank]
              [:location :not-blank]
+             [:nof-stars :int]
              [:ns-count {:optional true} :int]
              [:ns-total {:optional true} :int]
              [:current-file {:optional true} :not-blank]

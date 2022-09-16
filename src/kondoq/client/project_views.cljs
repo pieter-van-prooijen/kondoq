@@ -92,10 +92,11 @@
   (when (js/confirm (str "Do you want to delete project " project " ?"))
     (>evt [::project-events/delete-project location])))
 
-(defn- project-row [{:keys [project location ns-count]}]
+(defn- project-row [{:keys [project location nof-stars ns-count]}]
   ^{:key project} [:tr
                    [:td project]
                    [:td [:a {:href location :target "_blank"} location]]
+                   [:td  nof-stars]
                    [:td.has-text-right ns-count]
                    [:td
                     [:button.delete {:on-click #(delete-project project location %)}]]])
@@ -107,6 +108,7 @@
      [:tr
       [:td "Name"]
       [:td "Location"]
+      [:td "Stars"]
       [:td "Namespaces"]
       [:td ""]]]
     [:tbody

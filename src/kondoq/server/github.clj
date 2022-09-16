@@ -74,6 +74,12 @@
                                    "/" path)
                  :sha sha})))))
 
+(defn- fetch-repo-info [etag-db user project-name token]
+  (let [repo-url (str "https://api.github.com/repos/" user "/" project-name)
+        body (fetch-github-resource etag-db repo-url token)]
+    {:nof-stars (:stargazers_count body)
+     :default-branch (:default_branch body)}))
+
 ;; Insert/analyze a file (git blob) of a project.
 ;; Note that clj-kondo requires the extension of a file to determine the
 ;; language to analyze.
@@ -101,11 +107,13 @@
   (try
     (jdbc/with-transaction [db db-arg]
       (let [[user project] (take-last 2 (string/split project-url #"/"))
+            {:keys [default-branch nof-stars]}
+            (fetch-repo-info etag-db user project token)
             source-files (fetch-clojure-source-files etag-db user project
-                                                     "master" token)
+                                                     default-branch token)
             ns-total (count source-files)]
         (db/delete-project db project)
-        (db/insert-project db project project-url)
+        (db/insert-project db project project-url nof-stars)
         (doseq [[{:keys [blob-url sha display-url]} index]
                 (map vector source-files (range ns-total))]
           (let [{:keys [content encoding]}

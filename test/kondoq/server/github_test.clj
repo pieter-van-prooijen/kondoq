@@ -18,6 +18,9 @@
        .getBytes
        (.encodeToString (Base64/getMimeEncoder))))
 
+(def repo-info {:stargazer_count 1234
+                :default_branch "main"})
+
 (def source-files {:tree [{:path "database.clj"
                            :url "http://example.com/database.clj"
                            :sha "sha-1"}
@@ -35,13 +38,14 @@
 ;; Mock the http calls to GitHub using the responses defined above.
 (defn mocked-http-get [url _]
   (let [body (condp #(string/includes? %2 %1) url
-               "/git/trees/master" source-files
+               "/git/trees/main" source-files
+               "/repos" repo-info
                ".clj" (if *slow*
                         (do
                           (Thread/sleep 500)
                           (get blobs url))
                         (get blobs url)))]
-    {:headers {"Etag" url} ; Etag is not really used for now
+    {:headers {"Etag" (str (.hashCode url))} ; Etag is not really used for now
      :status 200
      :body (json/write-value-as-string body)}))
 

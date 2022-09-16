@@ -72,7 +72,9 @@
 (defn create-schema [db]
   (jdbc/execute! db [(str "CREATE TABLE projects ("
                           " project TEXT PRIMARY KEY CHECK(length(project) <= 127),"
-                          " location TEXT NOT NULL CHECK(length(location) <= 255)) STRICT",)])
+                          " location TEXT NOT NULL CHECK(length(location) <= 255),"
+                          " nof_stars INTEGER)"
+                          " STRICT")])
   (jdbc/execute! db ["CREATE INDEX projects_location_index ON projects(location)"])
 
   (jdbc/execute! db [(str "CREATE TABLE namespaces ("
@@ -134,10 +136,11 @@
 ;; Used in project uploading, so doesn't use a separate transaction.
 (defn insert-project
   "Insert a new project named `project` into `db` located at url `location`."
-  [db project location]
+  [db project location nof-stars]
   (let [sql (-> (sql-h/insert-into :projects)
                 (sql-h/values [{:project project
-                                :location location}])
+                                :location location
+                                :nof-stars nof-stars}])
                 (sql/format {:pretty true}))]
     (jdbc/execute! db sql)))
 
@@ -312,11 +315,12 @@
 
 (defn search-projects
   "Search for all projects present in `db`.
-  Projects have a name, location and namespace count. "
+  Projects have a name, location nof-stars and namespace count. "
   [db]
   (let [sql (sql/format
              {:select-distinct [[:p.project :project]
                                 [:p.location :location]
+                                [:p.nof-stars :nof-stars]
                                 [[:over [[:count :*]
                                          {:partition-by [:n.project]}
                                          :ns-count]]]]

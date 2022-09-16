@@ -11,14 +11,13 @@ Kondoq is more geared towards showing var usage in its context.
 ## TODO:
 - How does the UI and performance hold up with a large number of projects (> 10)?. 
 - give preference to "well-liked" repositories in results? (e.g. retieve and sort by the number of github stars)
+  (partially in)
 - etag matching on github doesn't work with oauth tokens, as the token differs for each upload?
   Yes: the response has a Vary header which contains "Authorization" when making an authorized request. This means
   cached content won't help reduce the number of GitHub api requests unless the using fixed application tokens.
 
 - a better way to skip certains files for analysis (like duplicate namespaces), see the skip-blob? predicate in
   github.clj
-
-- determine project main branch instead of assuming "master"
 
 - Does Hikari allows a way to execute multiple pragmas upon connection creation? Needs a complicated work-around at
   the moment to initialize sqlite correctly. Perhaps sqlite/xerial needs a different approach to keep the
