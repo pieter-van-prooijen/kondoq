@@ -23,6 +23,8 @@ Kondoq is more geared towards showing var usage in its context.
   the moment to initialize sqlite correctly. Perhaps sqlite/xerial needs a different approach to keep the
   connection open between different jdbc calls.
 
+- Try duckdb as an alternative to sqlite, more query oriented. Does it support cascading foreign key constraints?
+
 - clojure style guide compliance, consistent naming of "fetch-", "search-" etc. (server done, do client next)
 - more tests
 - split in read/write databases (sqlite: file:bla.sqlite?mode=ro ) for later move to single writer with multiple
@@ -36,8 +38,7 @@ Kondoq is more geared towards showing var usage in its context.
   message only when debugging)
 
 ## BUGS:
-- entering a non-qualified symbol in the search field and pressing enter will give a malli error in the console.
-
+- Deleting a project doesn't delete its usages anymore? (cascaded constraints don't work?)
 
 ## Getting Started
 

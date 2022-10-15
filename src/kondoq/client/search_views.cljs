@@ -54,7 +54,9 @@
     [:<>
      [:div {:on-click (fn [e]
                         (.preventDefault e)
-                        (>evt [::events/toggle-expanded [key child->parent]]))}
+                        ;; Allow user to copy text without collapsing the usage.
+                        (when (not (util/text-selected?))
+                          (>evt [::events/toggle-expanded [key child->parent]])))}
       [code-fragment line context is-collapsed start-context line-no]]
      (when-not is-collapsed
        [:a.tag.is-link {:href location :target "_blank"} location])]))

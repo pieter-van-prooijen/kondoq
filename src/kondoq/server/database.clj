@@ -22,6 +22,22 @@
 ;; Wrap the Connectable to set multiple pragma's on connection retrieval. This
 ;; means the init is done for every jdbc/execute! etc., but using the
 ;; wal journal_mode and foreign keys enforcement is crucial.
+
+(def pragmas {:journal_mode "WAL"
+              :foreign_keys "ON"
+              :cache_size 10000 ; In 4k pages.
+              :synchronous "NORMAL"
+              :optimize nil})
+
+(defn- set-pragma [conn k v]
+  (-> conn
+      (jdbc/execute! [(str "PRAGMA " (name k) (when v (str " = " v)))])))
+
+(defn- get-pragma [conn k]
+  (-> conn
+      (jdbc/execute! [(str "PRAGMA " (name k))])
+      (get-in [0 k])))
+
 (defrecord InitSqlite [connectable]
   java.io.Closeable
   (close [this]
@@ -31,22 +47,14 @@
   InitSqlite
   (get-connection [this opts]
     (let [conn (jdbc-protocols/get-connection (:connectable this) opts)]
-      (jdbc/execute! conn ["PRAGMA journal_mode = WAL"])
-      (jdbc/execute! conn ["PRAGMA foreign_keys = ON"])
-      (jdbc/execute! conn ["PRAGMA cache_size = 10000"]) ; In 4k pages.
-      (jdbc/execute! conn ["PRAGMA synchronous = NORMAL"])
-      (jdbc/execute! conn ["PRAGMA optimize"])
+      (doseq [[k v] pragmas]
+        (set-pragma conn k v))
       conn)))
 
 (extend-protocol jdbc-protocols/Sourceable
   InitSqlite
   (get-datasource [this]
     (jdbc-protocols/get-datasource (:connectable this))))
-
-(defn- pragma [conn k]
-  (-> conn
-      (jdbc/execute! [(str "PRAGMA " (name k))])
-      (get-in [0 k])))
 
 ;; Using a connection pool keeps the sqlite database file open between calls to
 ;; prevent reparsing the schema etc. on each database action.
@@ -56,15 +64,15 @@
                  (jdbc/with-options jdbc/unqualified-snake-kebab-opts))]
     (with-open [conn (jdbc/get-connection pool)]
       (log/info (str "sqlite settings: "
-                     (->> [:foreign_keys :cache_size :journal_mode :synchronous :optimize]
-                          (map #(vector (name %) (pragma conn %)))
+                     (->> (keys pragmas)
+                          (map #(vector (name %) (get-pragma conn %)))
                           (string/join))))
       pool)))
 
 (defmethod ig/halt-key! :kondoq/db [_ pool]
   ;; CHECKME: does getting the connection like this rely on next.jdbc internals?
   ;; invoking .close on a next.jdbc connection itself doesn't work?
-  ;; Double retrieval needed because of 
+  ;; Double retrieval needed because of
   (let [connectable (:connectable pool)]
     (log/info "closing connection pool" connectable)
     (.close connectable)))

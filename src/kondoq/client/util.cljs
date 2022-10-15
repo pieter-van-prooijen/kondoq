@@ -2,9 +2,9 @@
   (:require [clojure.string :as string]
             [re-frame.core]))
 
-;; Various utility functions for re-frame.
+;; Various utility functions for the client.
 
-(def intl-number-format (js/Intl.NumberFormat.))
+(def ^:private intl-number-format (js/Intl.NumberFormat.))
 (defn format-number [x]
   (.format intl-number-format x))
 
@@ -29,13 +29,20 @@
              (range begin js/Number.MAX_SAFE_INTEGER))
        (string/join "\n")))
 
-;; Split a string in three parts using a substring: before, substring and after.
-(defn split-with-substr [s substr]
+(defn split-with-substr
+  "Split string `s` in three parts: before `substr`, `substr` itself  and
+  after `substr`."
+  [s substr]
   (let [re (re-pattern (str "^(.*)(" substr ")(.*)$"))
         [all before middle after] (re-find re s)]
     (if all
       [before middle after]
       [s "" ""]))) ; no match
+
+(defn text-selected?
+  "Answer if there is a text selection active in the main window."
+  []
+  (not (string/blank? (.toString (.getSelection js/window)))))
 
 (comment
 

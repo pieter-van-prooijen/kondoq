@@ -1,23 +1,27 @@
 (ns kondoq.server.test-utils
-  "Database setup and teardown fixtures."
+  "Database and web setup and teardown fixtures."
   (:require [integrant.core :as ig]
             [kondoq.server.database :as db]
-            [kondoq.server.etag :as etag]))
+            [kondoq.server.etag :as etag]
+            [kondoq.server.web :as web]))
 
 (def ^:dynamic *system*)
 (def ^:dynamic *db*)
 (def ^:dynamic *etag-db*)
+(def ^:dynamic *base-url*)
 
 (defn system-fixture [f]
   (let [test-db-file (java.io.File/createTempFile "kondoq-test" ".sqlite")
         test-etag-db-file (java.io.File/createTempFile "kondoq-test-etag" ".sqlite")
-        config (-> (merge db/config etag/config)
+        config (-> (merge db/config etag/config web/config)
                    (assoc-in [:kondoq/db :dbname] (.getAbsolutePath test-db-file))
-                   (assoc-in [:kondoq/etag-db :dbname] (.getAbsolutePath test-etag-db-file)))
+                   (assoc-in [:kondoq/etag-db :dbname] (.getAbsolutePath test-etag-db-file))
+                   (assoc-in [:adapter/jetty :port] 0)) ; Random port
         system (ig/init config)] ; with-redefs is parallel
     (with-redefs [*system* system
                   *db* (:kondoq/db system)
-                  *etag-db* (:kondoq/etag-db system)]
+                  *etag-db* (:kondoq/etag-db system)
+                  *base-url* (str "http://localhost:" (web/server-port system))]
       (try
         (f)
         (finally
