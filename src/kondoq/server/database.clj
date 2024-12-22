@@ -7,10 +7,11 @@
             [integrant.core :as ig]
             [next.jdbc :as jdbc]
             [next.jdbc.connection :as jdbc-connection]
-            [next.jdbc.protocols :as jdbc-protocols]
             [next.jdbc.result-set :as rs]
             [next.jdbc.sql :as jdbc-sql])
-  (:import  com.zaxxer.hikari.HikariDataSource))
+  (:import  [com.zaxxer.hikari HikariDataSource]
+            [javax.sql DataSource]
+            [java.lang AutoCloseable]))
 
 (def config
   {:kondoq/db {:dbtype "sqlite"
@@ -19,49 +20,48 @@
                :password "kondoq-password"}})
 
 ;; HikariCP's connectionInitSql only allows a single statement to be executed?
-;; Wrap the Connectable to set multiple pragma's on connection retrieval. This
-;; means the init is done for every jdbc/execute! etc., but using the
-;; wal journal_mode and foreign keys enforcement is crucial.
+;; Wrap the original datasource to initialize with the correct sqlite pragmas upon
+;; connection.
 
 (def pragmas {:journal_mode "WAL"
               :foreign_keys "ON"
-              :cache_size 10000 ; In 4k pages.
-              :synchronous "NORMAL"
-              :optimize nil})
-
-(defn- set-pragma [conn k v]
-  (-> conn
-      (jdbc/execute! [(str "PRAGMA " (name k) (when v (str " = " v)))])))
+              :cache_size 10000         ; In 4k pages.
+              :synchronous "NORMAL"})
 
 (defn- get-pragma [conn k]
   (-> conn
       (jdbc/execute! [(str "PRAGMA " (name k))])
       (get-in [0 k])))
 
-(defrecord InitSqlite [connectable]
-  java.io.Closeable
-  (close [this]
-    (.close (:connectable this))))
+(defn- init-sqlite [conn]
+  (doseq [[pragma value] pragmas]
+    (jdbc/execute! conn [(str "PRAGMA " (if value (str (name pragma) " = " value) (name pragma)))])))
 
-(extend-protocol jdbc-protocols/Connectable
-  InitSqlite
-  (get-connection [this opts]
-    (let [conn (jdbc-protocols/get-connection (:connectable this) opts)]
-      (doseq [[k v] pragmas]
-        (set-pragma conn k v))
-      conn)))
+;; DS should be an auto-closeable datasource instance, like Hikaridatasource.
+(defn- wrap-datasource [ds]
+  (reify DataSource
+    (getConnection [_]
+      (let [conn (.getConnection ds)]
+        (init-sqlite conn)
+        conn))
+    (getConnection [_ username password]
+      (let [conn (.getConnection ds username password)]
+        (init-sqlite conn)
+        conn))
+    AutoCloseable
+    (close [_]
+      (.close ds))))
 
-(extend-protocol jdbc-protocols/Sourceable
-  InitSqlite
-  (get-datasource [this]
-    (jdbc-protocols/get-datasource (:connectable this))))
+(defn- apply-connection-options [connectable]
+  (jdbc/with-options connectable jdbc/unqualified-snake-kebab-opts))
 
 ;; Using a connection pool keeps the sqlite database file open between calls to
 ;; prevent reparsing the schema etc. on each database action.
 (defmethod ig/init-key :kondoq/db [_ config]
-  (let [pool (-> (jdbc-connection/->pool HikariDataSource config)
-                 (->InitSqlite)
-                 (jdbc/with-options jdbc/unqualified-snake-kebab-opts))]
+  (let [pool (->> config
+                  (jdbc-connection/->pool HikariDataSource)
+                  wrap-datasource
+                  apply-connection-options)]
     (with-open [conn (jdbc/get-connection pool)]
       (log/info (str "sqlite settings: "
                      (->> (keys pragmas)
@@ -72,7 +72,6 @@
 (defmethod ig/halt-key! :kondoq/db [_ pool]
   ;; CHECKME: does getting the connection like this rely on next.jdbc internals?
   ;; invoking .close on a next.jdbc connection itself doesn't work?
-  ;; Double retrieval needed because of
   (let [connectable (:connectable pool)]
     (log/info "closing connection pool" connectable)
     (.close connectable)))

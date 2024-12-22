@@ -41,7 +41,7 @@
         etag-db (:kondoq/etag-db system)]
     (doseq [url urls]
       (log/infof "Upserting project %s" url)
-      (github/upsert-project db etag-db url token)
+      (github/upsert-project db etag-db url (name token)) ; TODO: token is provided as a symbol, not a string?
       (log/infof "Added project %s" url))
     (System/exit 0))) ; clojure-cli doesn't exit automatically ?
 

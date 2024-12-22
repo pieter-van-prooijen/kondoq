@@ -76,26 +76,26 @@
       [usage-code usage]]]))
 
 (defn- invoke-fetch
-  ([e]
-   (invoke-fetch (.-value (dom/getElement "search-var")) nil e))
-  ([symbol arity e]
-   (let [page-size (<sub [::subs/page-size])]
-     (.preventDefault e)
-     (>evt [::events/fetch-namespaces-usages [symbol arity 0 page-size]]))))
+  ([page-size e]
+   (invoke-fetch (.-value (dom/getElement "search-var")) nil page-size e))
+  ([symbol arity page-size e]
+   (.preventDefault e)
+   (>evt [::events/fetch-namespaces-usages [symbol arity 0 page-size]])))
 
-(defn- invoke-fetch-with-enter [symbol arity e]
+(defn- invoke-fetch-with-enter [symbol arity page-size e]
   (when (= (.-code e) "Enter")
-    (invoke-fetch symbol arity e)))
+    (invoke-fetch symbol arity page-size e)))
 
 (defn- symbol-counts-row [substr {:keys [symbol count arity]}]
-  (let [[before middle after] (util/split-with-substr (str symbol) substr)]
+  (let [[before middle after] (util/split-with-substr (str symbol) substr)
+        page-size (<sub [::subs/page-size])]
     ^{:key (str symbol "-" arity)}
     [:tr.symbol-counts-row.is-clickable {:on-click
-                                         (partial invoke-fetch symbol arity)
+                                         (partial invoke-fetch symbol arity page-size)
                                          :tab-index
                                          0
                                          :on-key-down
-                                         (partial invoke-fetch-with-enter symbol arity)}
+                                         (partial invoke-fetch-with-enter symbol arity page-size)}
      [:td
       before
       [:span.has-text-weight-bold middle]
@@ -115,7 +115,8 @@
        [:td "count"]
        [:td "arity"]]]
      [:tbody
-      (map (partial symbol-counts-row symbol-count-q) symbol-counts)]]))
+      ;; Having a ratom deref in a lazy seq gives a warning.
+      (doall (map (partial symbol-counts-row symbol-count-q) symbol-counts))]]))
 
 (defn- fetch-symbol-counts [e]
   (let [search-for (-> e .-target .-value)]
@@ -135,48 +136,50 @@
                          [symbol arity page page-size]]))])))
 
 (defn search-panel [is-active]
-  [:div {:class (when-not is-active "is-hidden")}
-   [:form {:on-submit invoke-fetch} ; handle <enter> key in form field
-    [:div.field.has-addons
-     [:div.control
-      [:input.input {:id "search-var"
-                     :autoFocus true ; TODO set focus when tab becomes active
-                     :type "text"
-                     :placeholder "search for var..."
-                     :autoComplete "off"
-                     :on-input fetch-symbol-counts
-                     :on-focus fetch-symbol-counts}]]
-     [:div.control
-      [:div.button.is-primary {:on-click invoke-fetch}
-       "Search"]]]
-    [:p.help "Type two or more characters of a var for a list of matches,"
-     " selectable using the mouse or <TAB>."]]
+  (let [page-size (<sub [::subs/page-size])
+        invoke-fetch-with-page-size (partial invoke-fetch page-size)]
+    [:div {:class (when-not is-active "is-hidden")}
+     [:form {:on-submit invoke-fetch-with-page-size}     ; handle <enter> key in form field
+      [:div.field.has-addons
+       [:div.control
+        [:input.input {:id "search-var"
+                       :autoFocus true    ; TODO set focus when tab becomes active
+                       :type "text"
+                       :placeholder "search for var..."
+                       :autoComplete "off"
+                       :on-input fetch-symbol-counts
+                       :on-focus fetch-symbol-counts}]]
+       [:div.control
+        [:div.button.is-primary {:on-click invoke-fetch-with-page-size}
+         "Search"]]]
+      [:p.help "Type two or more characters of a var for a list of matches,"
+       " selectable using the mouse or <TAB>."]]
 
-   ;; type-ahead table
-   [symbol-counts-table (<sub [::subs/symbol-counts-q]) (<sub [::subs/symbol-counts])]
+     ;; type-ahead table
+     [symbol-counts-table (<sub [::subs/symbol-counts-q]) (<sub [::subs/symbol-counts])]
 
-   ;; results
-   [:div.mt-6
-    (if-let [symbol (<sub [::subs/symbol])]
-      (let [usages-count (<sub [::subs/usages-count])
-            arity (<sub [::subs/arity])]
-        [:h2.subtitle
-         [:span.has-text-weight-bold usages-count]
-         " usages of "
-         [:span.has-text-weight-bold (str symbol)]
-         " "
-         (condp = arity
-           nil "(arity n/a)"
-           -1 "(all arities)"
-           (str "(arity " arity ")"))])
-      [:h2.subtitle "no current search, type a query"])
-    [pagination]
-    [:table.table
-     [:thead
-      [:tr
-       [:th "Project"]
-       [:th "Namespace"]
-       [:th "Usages"]]]
-     [:tbody
-      (map usages-row (<sub [::subs/usages-rows]) (range))]]
-    [pagination]]])
+     ;; results
+     [:div.mt-6
+      (if-let [symbol (<sub [::subs/symbol])]
+        (let [usages-count (<sub [::subs/usages-count])
+              arity (<sub [::subs/arity])]
+          [:h2.subtitle
+           [:span.has-text-weight-bold usages-count]
+           " usages of "
+           [:span.has-text-weight-bold (str symbol)]
+           " "
+           (condp = arity
+             nil "(arity n/a)"
+             -1 "(all arities)"
+             (str "(arity " arity ")"))])
+        [:h2.subtitle "no current search, type a query"])
+      [pagination]
+      [:table.table
+       [:thead
+        [:tr
+         [:th "Project"]
+         [:th "Namespace"]
+         [:th "Usages"]]]
+       [:tbody
+        (map usages-row (<sub [::subs/usages-rows]) (range))]]
+      [pagination]]]))

@@ -69,7 +69,7 @@
     (is (empty? usages))
     (.delete (java.io.File. filename))))
 
-;; doesn't work yet, now way to specify "escape" after a like clause in honeysql
+;; Doesn't work yet, now way to specify "escape" after a like clause in honeysql.
 (deftest escape-like-pattern-characters
   (let [filename (insert-test-project)
         symbol-counts (db/search-symbol-counts *db* "%dec%" 10)
@@ -125,7 +125,7 @@
     (.delete (java.io.File. filename-clj))
     (.delete (java.io.File. filename-cljs))))
 
-;; Check if the "cascade on delete.." constraints work correctly
+;; Check if the "cascade on delete.." constraints work correctly.
 (deftest should-remove-namespaces-usages-context-when-project-is-removed
   (let [filename (insert-test-project)
         tables ["projects" "namespaces" "var_usages" "contexts"]]

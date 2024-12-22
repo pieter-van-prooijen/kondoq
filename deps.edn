@@ -2,41 +2,41 @@
 
  :deps
  {clj-kondo/tools {:git/url "https://github.com/clj-kondo/clj-kondo"
-                   :tag "v2022.08.03"
-                   :sha "6915dcfb4a19c2968d9e45b560cc804ad08edcf6"
+                   :tag "v2024.11.14"
+                   :sha "1eef5c59edc6847db0d74c696da678ee3531ca17"
                    :deps/root "analysis"}
 
-  integrant/integrant {:mvn/version "0.8.0"}
+  integrant/integrant {:mvn/version "0.13.1"}
 
-  ring/ring-core {:mvn/version "1.9.5"}
-  ring/ring-jetty-adapter {:mvn/version "1.9.5"}
-  metosin/reitit-core {:mvn/version "0.5.18"}
+  ring/ring-core {:mvn/version "1.13.0"}
+  ring/ring-jetty-adapter {:mvn/version "1.13.0"}
+  metosin/reitit-core {:mvn/version "0.7.2"}
 
-  com.github.seancorfield/next.jdbc {:mvn/version "1.2.796"}
-  com.github.seancorfield/honeysql {:mvn/version "2.3.911"}
-  org.xerial/sqlite-jdbc {:mvn/version "3.39.2.1"}
+  com.github.seancorfield/next.jdbc {:mvn/version "1.3.981"}
+  com.github.seancorfield/honeysql {:mvn/version "2.6.1243"}
+  org.xerial/sqlite-jdbc {:mvn/version "3.47.1.0"}
   ;; Hikari uses slf4j-api 2.0-alpha
-  com.zaxxer/HikariCP {:mvn/version "5.0.1" :exclusions [org.slf4j/slf4j-api]}
+  com.zaxxer/HikariCP {:mvn/version "6.2.1" :exclusions [org.slf4j/slf4j-api]}
 
-  clj-http/clj-http {:mvn/version "3.12.3"}
-  metosin/jsonista {:mvn/version "0.3.6"}
+  clj-http/clj-http {:mvn/version "3.13.0"}
+  metosin/jsonista {:mvn/version "0.3.13"}
 
-  org.clojure/tools.logging {:mvn/version "1.2.4"}
-  ch.qos.logback/logback-classic {:mvn/version "1.4.0"}
+  org.clojure/tools.logging {:mvn/version "1.3.0"}
+  ch.qos.logback/logback-classic {:mvn/version "1.5.15"}
 
-  lambdaisland/uri {:mvn/version "1.13.95"}}
+  lambdaisland/uri {:mvn/version "1.19.155"}}
 
  :aliases
  ;; Set cider-clojure-cli-aliases to "dev" in emacs to make cider use this alias
  ;; on jack-in. See also the .dir-locals.el file
  {:dev
   {:extra-paths ["dev" "test"]
-   :extra-deps {integrant/repl {:mvn/version "0.3.2"}}
+   :extra-deps {integrant/repl {:mvn/version "0.4.0"}}
    :jvm-opts ["-XX:-OmitStackTraceInFastThrow"
               "-Dconfig=github-oauth-dev.edn"]}
 
   :build
-  {:deps {io.github.clojure/tools.build {:git/tag "v0.8.3" :git/sha "0d20256"}}
+  {:deps {io.github.clojure/tools.build {:mvn/version "0.10.6"}}
    :ns-default build}
 
   :test

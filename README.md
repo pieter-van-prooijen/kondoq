@@ -14,7 +14,7 @@ Kondoq is more geared towards showing var usage in its context.
   (partially in)
 - etag matching on github doesn't work with oauth tokens, as the token differs for each upload?
   Yes: the response has a Vary header which contains "Authorization" when making an authorized request. This means
-  cached content won't help reduce the number of GitHub api requests unless the using fixed application tokens.
+  cached content won't help reduce the number of GitHub api requests unless using fixed application tokens.
 
 - a better way to skip certains files for analysis (like duplicate namespaces), see the skip-blob? predicate in
   github.clj
@@ -59,13 +59,13 @@ $ clj -X:test
 Starting the api and html/js file server:
 
 ```sh
-$ clj -M:dev -m kondoq.server
+$ clj -M:dev -m kondoq.server.core
 ```
 
 Keep this server running.
 
 ### Client
-Assumes a working recent node / npm
+Assumes a working recent node / npm install
 
 install: shadow-cljs via npm
 
@@ -81,13 +81,18 @@ Compiling the shadow-cljs build:
 $ npx shadow-cljs compile app
 ```
 
+In a separate shell, start shadow-clj in server mode:
+```
+npx shadow-cljs server
+```
+
 Compile the tests:
 
 ```sh
 $ npx shadow-cljs compile browser-test
 ```
 
-See http://localhost:8281/index.html to run the tests and see the test results
+See http://localhost:8281/index.html to run the tests in the browser and see the test results
 
 ### Trying it Out
 
@@ -108,7 +113,7 @@ cider-jack-in-clj  (C-c M-s or C-c C-x j j), use "clojure-cli" as the command.
 open the dev/user.clj file and execute the integrant (go) command (e.g. using C-x C-e), this will start the backend
 with the "dev" profile in deps.edn. Logging is on stdout in the cider repl buffer.
 
-cider-jack-in-cljs (C-c M-S or C- C-x j s) (note the upper-case S) , say "y" to the "are you sure" question and use
+cider-jack-in-cljs (C-c M-S or C-c C-x j s) (note the upper-case S) , say "y" to the "are you sure" question and use
 "shadow-cljs" as the command to run. This will start shadow-cljs on the "app" build.
 
 Open or reload the app on http://localhost:8280 , the cljs repl should now work.
@@ -179,6 +184,6 @@ It has the following form (github supplies and id and secret when registering an
  :github-client-secret "<client-secret>"
  :github-callback-uri "http://localhost:8280/oauth-callback"}
 
-By default, the server will use  "github-oauth-dev.edn" as a file (register with github create this file yourself).
+By default, the server will use  "github-oauth-dev.edn" as a file (register with github to create this file yourself).
 
 See [re-frame.md] for the generic re-frame project documentation.
