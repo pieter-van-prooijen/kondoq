@@ -38,7 +38,7 @@ Kondoq is more geared towards showing var usage in its context.
   message only when debugging)
 
 ## BUGS:
-- Deleting a project doesn't delete its usages anymore? (cascaded constraints don't work?)
+- add any outstanding issues here.
 
 ## Getting Started
 
