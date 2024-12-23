@@ -126,6 +126,8 @@ See also https://docs.cider.mx/cider/usage/managing_connections.html#adding-repl
 Running cljs tests inside cider is currently not supported out of the box. Use the run-test function to execute the
 tests in the current namespace, which output printed in the cljs repl window.
 
+For the reframe-10x client diagnostic panel, use C-S-x in the browser window.
+
 ## Production Build / Install
 
 Make the uber jar (from the build.clj), will also create the production javascript:
@@ -140,6 +142,7 @@ Run the jar with:
 $ java -Dconfig=github-oauth-dev.edn -jar target/<path-to-jar>
 ```
 
+Open the webapp on http://localhost:3002
 Copy the jar in /target to the server, clean the database if a schema change happened.
 
 ### Batch Upload

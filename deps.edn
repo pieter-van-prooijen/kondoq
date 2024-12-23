@@ -52,6 +52,7 @@
   :outdated {:extra-deps {com.github.liquidz/antq {:mvn/version "RELEASE"}}
              :main-opts ["-m" "antq.core"]}
 
+  ;; See the readme on how to use this function.
   :import-batch
   {:exec-fn kondoq.server.core/import-batch
    :exec-args {:urls ["http://example.com"]

@@ -1,0 +1,40 @@
+* Ubuntu 22.04 server install
+
+fix 5ghz wifi (wrong channel?)
+force ipv6 only ?
+set static ipv6 address in openwrt
+
+open up address for 80,443 in openwrt firewall (open ssh as well?)
+add ipv6 to fastmail dns, make sure ipv4 points to 127.0.0.1 so it's not caught by wildcard domain
+
+change sshd to allow key only auth from outside ?
+
+install nginx
+remove default website and install kondoq config, check if it works with custom index.html
+install certbot and python3-certbot-nginx
+run certbot for kondoq.lambda-tree.nl, adds a redirect on port 80 automatically
+
+install openjdk-17-jdk-headless
+
+change kondoq nginx config to reverse proxy
+
+install kondoq app under the ubuntu user, install system script in /etc/systemd/system/kondoq.service
+and *enable* it and *start* it using systemctl
+
+install github-oauth-prod.edn in the root of the app.
+
+** Security / Sandboxing
+https://www.freedesktop.org/software/systemd/man/systemd.exec.html#
+https://www.redhat.com/sysadmin/mastering-systemd
+https://news.ycombinator.com/item?id=29971515
+
+Use systemd sandboxing:
+- set user/group
+- set root directory with readwritepaths etc.  
+- allow only certain system calls (e.g. don't allow fork/clone "SystemCallFilter=@system.service -@process"
+- how is a violation logged ?
+- SystemCallArchitectures = native
+  SystemCallErrorNumber = EPERM?
+  ProtectSystem = yes
+  PrivateTmp and data dirs?
+  Ephemeral user/group (how to persist the data files?)

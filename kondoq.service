@@ -1,0 +1,25 @@
+# install under /etc/systemd/system, refresh with 'systemctl daemon-reload'
+[Unit]
+Description=Kondoq Webapp
+
+[Service]
+User=ubuntu
+ExecStart=java -Xmx1024m  -Dconfig=github-oauth-prod.edn -jar kondoq-standalone.jar
+WorkingDirectory=/home/ubuntu/kondoq
+
+# Sandboxing, use 'systemd-analyze security kondoq' for details
+ProtectSystem=strict
+# Because it runs in the ubuntu user directory for now
+ProtectHome=no
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+NoNewPrivileges=yes
+# puts temp files under /tmp/systemd-private-*-<unit>-*/tmp
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
